@@ -1,0 +1,10 @@
+[package]
+name = "honba-me-fyers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+futures.workspace = true
+honba-me-core.workspace = true

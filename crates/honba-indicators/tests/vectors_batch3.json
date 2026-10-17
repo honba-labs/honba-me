@@ -1,0 +1,54 @@
+{
+  "type": "IndicatorsBatch3",
+  "tolerance": { "relative": 1e-9, "absolute": 1e-9 },
+  "bars": [
+    { "high": 10.0, "low": 5.0, "close": 7.0 },
+    { "high": 11.0, "low": 6.0, "close": 9.0 },
+    { "high": 9.0, "low": 4.0, "close": 6.0 },
+    { "high": 12.0, "low": 7.0, "close": 10.0 },
+    { "high": 13.0, "low": 8.0, "close": 11.0 },
+    { "high": 8.0, "low": 3.0, "close": 5.0 },
+    { "high": 9.0, "low": 6.0, "close": 8.0 },
+    { "high": 10.0, "low": 7.0, "close": 9.0 }
+  ],
+  "donchian": {
+    "period": 3,
+    "expected": [
+      null,
+      null,
+      { "upper": 11.0, "lower": 4.0, "middle": 7.5 },
+      { "upper": 12.0, "lower": 4.0, "middle": 8.0 },
+      { "upper": 13.0, "lower": 4.0, "middle": 8.5 },
+      { "upper": 13.0, "lower": 3.0, "middle": 8.0 },
+      { "upper": 13.0, "lower": 3.0, "middle": 8.0 },
+      { "upper": 10.0, "lower": 3.0, "middle": 6.5 }
+    ]
+  },
+  "williams_r": {
+    "period": 3,
+    "expected": [
+      null,
+      null,
+      -71.42857142857143,
+      -25.0,
+      -22.22222222222222,
+      -80.0,
+      -50.0,
+      -14.285714285714286
+    ]
+  },
+  "stochastic": {
+    "period": 3,
+    "d_period": 2,
+    "expected": [
+      null,
+      null,
+      { "k": 28.571428571428573, "d": null },
+      { "k": 75.0, "d": 51.785714285714286 },
+      { "k": 77.77777777777777, "d": 76.38888888888889 },
+      { "k": 20.0, "d": 48.888888888888886 },
+      { "k": 50.0, "d": 35.0 },
+      { "k": 85.71428571428571, "d": 67.85714285714285 }
+    ]
+  }
+}

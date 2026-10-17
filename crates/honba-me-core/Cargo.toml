@@ -1,0 +1,12 @@
+[package]
+name = "honba-me-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+chrono.workspace = true
+futures.workspace = true
+thiserror.workspace = true
+honba-kokoro-types.workspace = true

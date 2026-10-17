@@ -1,0 +1,16 @@
+{
+  "generated_by": "python/src/honba/markets/india/costs.py :: nse_equity_delivery_fill_cost(side, quantity, price).amount",
+  "how": "for each case: from honba.markets.india.costs import nse_equity_delivery_fill_cost; from honba.domain.order import OrderSide; nse_equity_delivery_fill_cost(OrderSide.BUY if side == 'buy' else OrderSide.SELL, quantity, price).amount (integer paise).",
+  "segment": "india.equity.delivery",
+  "note": "Golden minor-unit totals (INR paise) from the Python reference cost model; the Rust NseCashEquitySchedule::delivery() is checked equal to it here through an actual NextOpenSim fill.",
+  "cases": [
+    { "side": "buy", "quantity": 1.0, "price": 100.0, "costs_minor": 6 },
+    { "side": "sell", "quantity": 1.0, "price": 100.0, "costs_minor": 14 },
+    { "side": "buy", "quantity": 10.0, "price": 2950.0, "costs_minor": 1598 },
+    { "side": "sell", "quantity": 10.0, "price": 2950.0, "costs_minor": 4105 },
+    { "side": "buy", "quantity": 25.0, "price": 1234.56, "costs_minor": 1671 },
+    { "side": "sell", "quantity": 25.0, "price": 1234.56, "costs_minor": 4294 },
+    { "side": "buy", "quantity": 500.0, "price": 750.0, "costs_minor": 9389 },
+    { "side": "sell", "quantity": 500.0, "price": 750.0, "costs_minor": 41264 }
+  ]
+}
