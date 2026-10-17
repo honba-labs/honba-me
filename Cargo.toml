@@ -2,10 +2,14 @@
 resolver = "2"
 members = [
   "crates/honba-me-core",
-  "crates/honba-me-zerodha",
-  "crates/honba-me-upstox",
+  "crates/honba-me-feed",
   "crates/honba-me-fyers",
+  "crates/honba-me-indicators",
+  "crates/honba-me-market",
   "crates/honba-me-normalizer",
+  "crates/honba-me-signals",
+  "crates/honba-me-upstox",
+  "crates/honba-me-zerodha",
 ]
 
 [workspace.package]
@@ -18,7 +22,7 @@ repository = "https://github.com/your-org/honba-me"
 [workspace.dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["float_roundtrip"] }
 thiserror = "1"
 anyhow = "1"
 tracing = "0.1"
@@ -32,6 +36,39 @@ uuid = { version = "1", features = ["v4", "serde"] }
 axum = "0.7"
 clap = { version = "4", features = ["derive"] }
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono"] }
+arrow = "53"
+parquet = { version = "53", features = ["arrow"] }
+csv = "1"
 
 honba-me-core       = { path = "crates/honba-me-core" }
-honba-kokoro-types  = { path = "../honba-kokoro/crates/honba-kokoro-types" }
+honba-me-feed       = { path = "crates/honba-me-feed" }
+honba-me-fyers      = { path = "crates/honba-me-fyers" }
+honba-me-indicators = { path = "crates/honba-me-indicators" }
+honba-me-market     = { path = "crates/honba-me-market" }
+honba-me-normalizer = { path = "crates/honba-me-normalizer" }
+honba-me-signals    = { path = "crates/honba-me-signals" }
+honba-me-upstox     = { path = "crates/honba-me-upstox" }
+honba-me-zerodha    = { path = "crates/honba-me-zerodha" }
+
+# Aliases
+honba-indicators = { package = "honba-me-indicators", path = "crates/honba-me-indicators" }
+honba-signals    = { package = "honba-me-signals", path = "crates/honba-me-signals" }
+honba-market     = { package = "honba-me-market", path = "crates/honba-me-market" }
+honba-feed       = { package = "honba-me-feed", path = "crates/honba-me-feed" }
+
+# Cross-repo dependencies
+honba-kokoro-types     = { path = "../honba-kokoro/crates/honba-kokoro-types" }
+honba-kokoro-messages  = { path = "../honba-kokoro/crates/honba-kokoro-messages" }
+honba-kokoro-entities  = { path = "../honba-kokoro/crates/honba-kokoro-entities" }
+honba-kokoro-ports     = { path = "../honba-kokoro/crates/honba-kokoro-ports" }
+honba-messages         = { package = "honba-kokoro-messages", path = "../honba-kokoro/crates/honba-kokoro-messages" }
+honba-entities         = { package = "honba-kokoro-entities", path = "../honba-kokoro/crates/honba-kokoro-entities" }
+honba-ports            = { package = "honba-kokoro-ports", path = "../honba-kokoro/crates/honba-kokoro-ports" }
+
+honba-ya-engine        = { path = "../honba-ya/crates/honba-ya-engine" }
+honba-ya-sim           = { path = "../honba-ya/crates/honba-ya-sim" }
+honba-engine           = { package = "honba-ya-engine", path = "../honba-ya/crates/honba-ya-engine" }
+honba-sim              = { package = "honba-ya-sim", path = "../honba-ya/crates/honba-ya-sim" }
+
+honba-nou-analytics    = { path = "../honba-nou/crates/honba-nou-analytics" }
+honba-analytics        = { package = "honba-nou-analytics", path = "../honba-nou/crates/honba-nou-analytics" }

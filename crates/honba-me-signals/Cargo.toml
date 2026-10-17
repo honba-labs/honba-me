@@ -1,14 +1,16 @@
 [package]
-name = "honba-indicators"
+name = "honba-me-signals"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Incremental technical indicators over price and bar series"
+description = "Explainable buy/sell signal detectors and horizon rulesets (ADR 0031)"
 
 [dependencies]
 honba-messages.workspace = true
 honba-entities.workspace = true
-serde.workspace = true
+honba-indicators.workspace = true
+
+[dev-dependencies]
 serde_json.workspace = true
