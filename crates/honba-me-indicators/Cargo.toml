@@ -7,6 +7,9 @@ repository.workspace = true
 rust-version.workspace = true
 description = "Incremental technical indicators over price and bar series"
 
+[lib]
+name = "honba_indicators"
+
 [dependencies]
 honba-messages.workspace = true
 honba-entities.workspace = true

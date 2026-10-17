@@ -11,6 +11,9 @@ description = "Generic market contracts, market packs, and registry for Honba"
 default = ["india"]
 india = []
 
+[lib]
+name = "honba_market"
+
 [dependencies]
 honba-messages.workspace = true
 honba-entities.workspace = true

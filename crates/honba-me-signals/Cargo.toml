@@ -7,6 +7,9 @@ repository.workspace = true
 rust-version.workspace = true
 description = "Explainable buy/sell signal detectors and horizon rulesets (ADR 0031)"
 
+[lib]
+name = "honba_signals"
+
 [dependencies]
 honba-messages.workspace = true
 honba-entities.workspace = true

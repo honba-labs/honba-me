@@ -7,6 +7,9 @@ repository.workspace = true
 rust-version.workspace = true
 description = "Market data catalog, Parquet import/export, and report loaders for Honba"
 
+[lib]
+name = "honba_feed"
+
 [dependencies]
 honba-messages = { workspace = true }
 honba-entities = { workspace = true }
