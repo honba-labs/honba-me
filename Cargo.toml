@@ -21,6 +21,7 @@ repository = "https://github.com/your-org/honba-me"
 
 [workspace.dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util"] }
+tokio-stream = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 thiserror = "1"
@@ -40,6 +41,8 @@ arrow = "53"
 parquet = { version = "53", features = ["arrow"] }
 csv = "1"
 
+honba-core          = { path = "../honba-core" }
+honba-mon           = { path = "../honba-mon" }
 honba-me-core       = { path = "crates/honba-me-core" }
 honba-me-feed       = { path = "crates/honba-me-feed" }
 honba-me-fyers      = { path = "crates/honba-me-fyers" }
