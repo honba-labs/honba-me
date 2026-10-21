@@ -1,0 +1,23 @@
+[package]
+name = "honba-me-loaders"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Market data loaders for Honba: NSE Bhavcopy, broker REST historical bars, DuckDB lakehouse connector"
+
+[lib]
+name = "honba_loaders"
+
+[dependencies]
+async-trait.workspace = true
+chrono.workspace = true
+csv.workspace = true
+honba-core.workspace = true
+reqwest.workspace = true
+rust_decimal.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true

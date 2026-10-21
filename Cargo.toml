@@ -5,6 +5,7 @@ members = [
   "crates/honba-me-feed",
   "crates/honba-me-fyers",
   "crates/honba-me-indicators",
+  "crates/honba-me-loaders",
   "crates/honba-me-market",
   "crates/honba-me-normalizer",
   "crates/honba-me-signals",

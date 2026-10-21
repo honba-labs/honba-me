@@ -251,46 +251,46 @@ Each broker crate must provide a live async WebSocket connection (`tokio-tungste
 ## 4. Phase-by-Phase Implementation Roadmap
 
 ### Phase 1: Canonical Type Unification & Legacy Decoupling (M0) — Week 1–2
-- [ ] **1.1 Workspace Dependency Clean-up**
-  - [ ] Add `honba-core` and `honba-mon` as dependencies in `honba-me-feed`, `honba-me-market`, and `honba-me-signals`.
-  - [ ] Deprecate legacy dependencies (`honba-messages`, `honba-entities`, `honba-ports`) in `honba-me`.
-  - [ ] Replace `f64` in `honba-me-market` (`PriceBand`, `QuantityViolation`) with `honba_core::Price` and `Quantity`.
-- [ ] **1.2 Feed Trait Evolution**
-  - [ ] Update `honba_me_core::MarketDataFeed` to include `fetch_snapshot` and `feed_health`.
-  - [ ] Implement true LVC (Last-Value-Cache) in `CoalescingTickBuffer` with eviction map under backpressure.
-  - [ ] Implement `MarketDataEnricher` to attach dynamic `PriceBand` and intraday VWAP to incoming ticks.
+- [x] **1.1 Workspace Dependency Clean-up**
+  - [x] Add `honba-core` and `honba-mon` as dependencies in `honba-me-feed`, `honba-me-market`, and `honba-me-signals`.
+  - [x] Deprecate legacy dependencies (`honba-messages`, `honba-entities`, `honba-ports`) in `honba-me`.
+  - [x] Replace `f64` in `honba-me-market` (`PriceBand`, `QuantityViolation`) with `honba_core::Price` and `Quantity`.
+- [x] **1.2 Feed Trait Evolution**
+  - [x] Update `honba_me_core::MarketDataFeed` to include `fetch_snapshot` and `feed_health`.
+  - [x] Implement true LVC (Last-Value-Cache) in `CoalescingTickBuffer` with eviction map under backpressure.
+  - [x] Implement `MarketDataEnricher` to attach dynamic `PriceBand` and intraday VWAP to incoming ticks.
 
 ### Phase 2: Production WebSocket Clients & Multi-Broker Binary Decoders (M1) — Week 3–5
-- [ ] **2.1 Shared WebSocket Transport (`honba-me-core`)**
-  - [ ] Build reusable `WsClient` wrapping `tokio-tungstenite` with `rustls-tls-native-roots`.
-  - [ ] Implement automated heartbeat ping/pong timer and dead-connection detection.
-  - [ ] Implement exponential backoff reconnection loop with full jitter (1s to 60s).
-  - [ ] Implement automatic subscription replay on reconnect.
-- [ ] **2.2 Zerodha Kite Ticker (`honba-me-zerodha`)**
-  - [ ] Implement full binary decoders: 8B LTP, 28B Index, 44B Quote, and 184B 5-Depth.
-  - [ ] Add zlib decompression for bundled binary frames.
-  - [ ] Implement REST quote snapshot fetch on reconnect via Kite REST API.
-  - [ ] Wire live WebSocket connection to `subscribe()` stream.
-- [ ] **2.3 Upstox v2 Feed (`honba-me-upstox`)**
-  - [ ] Add `prost` Protobuf compilation for `MarketDataFeed.proto`.
-  - [ ] Implement binary Protobuf parsing for `LTPFeed`, `MarketFullFeed`, and `OptionGreeks`.
-  - [ ] Wire dynamic authorized WebSocket handshake and streaming.
-- [ ] **2.4 Fyers v3 Data Socket (`honba-me-fyers`)**
-  - [ ] Implement 72B Lite and 200B Depth binary decoders and ping/pong protocol.
-  - [ ] Wire live WebSocket connection.
-- [ ] **2.5 Angel One SmartAPI 2.0 (`honba-me-angelone`) [NEW]**
-  - [ ] Scaffold `honba-me-angelone` crate and add to workspace.
-  - [ ] Implement SmartAPI binary WebSocket 2.0 parser and JWT auth handshake.
+- [x] **2.1 Shared WebSocket Transport (`honba-me-core`)**
+  - [x] Build reusable `WsClient` wrapping `tokio-tungstenite` with `rustls-tls-native-roots`.
+  - [x] Implement automated heartbeat ping/pong timer and dead-connection detection.
+  - [x] Implement exponential backoff reconnection loop with full jitter (1s to 60s).
+  - [x] Implement automatic subscription replay on reconnect.
+- [x] **2.2 Zerodha Kite Ticker (`honba-me-zerodha`)**
+  - [x] Implement full binary decoders: 8B LTP, 28B Index, 44B Quote, and 184B 5-Depth.
+  - [x] Add zlib decompression for bundled binary frames.
+  - [x] Implement REST quote snapshot fetch on reconnect via Kite REST API.
+  - [x] Wire live WebSocket connection to `subscribe()` stream.
+- [x] **2.3 Upstox v2 Feed (`honba-me-upstox`)**
+  - [x] Add `prost` Protobuf compilation for `MarketDataFeed.proto`.
+  - [x] Implement binary Protobuf parsing for `LTPFeed`, `MarketFullFeed`, and `OptionGreeks`.
+  - [x] Wire dynamic authorized WebSocket handshake and streaming.
+- [x] **2.4 Fyers v3 Data Socket (`honba-me-fyers`)**
+  - [x] Implement 72B Lite and 200B Depth binary decoders and ping/pong protocol.
+  - [x] Wire live WebSocket connection.
+- [x] **2.5 Angel One SmartAPI 2.0 (`honba-me-angelone`) [NEW]**
+  - [x] Scaffold `honba-me-angelone` crate and add to workspace.
+  - [x] Implement SmartAPI binary WebSocket 2.0 parser and JWT auth handshake.
 
 ### Phase 3: Instrument Master & Corporate Actions Engine (M2) — Week 6–7
-- [ ] **3.1 Instrument Master Ingestion (`honba-me-normalizer`)**
-  - [ ] Implement automated downloader for Zerodha `instruments.csv`, Upstox `complete.json.gz`, and NSE `EQUITY_L.csv`.
-  - [ ] Build fast in-memory trie and multi-key index for Token $\leftrightarrow$ Symbol $\leftrightarrow$ ISIN $\leftrightarrow$ `InstrumentId`.
-  - [ ] Implement dynamic tick size and lot size resolver.
-- [ ] **3.2 Corporate Actions Engine (`honba-me-normalizer`)**
-  - [ ] Build corporate action event ledger (splits, bonuses, dividends, symbol changes).
-  - [ ] Implement backward/forward price adjustment calculation for OHLCV bars.
-  - [ ] Expose adjusted series generation to backtester and feed readers.
+- [x] **3.1 Instrument Master Ingestion (`honba-me-normalizer`)**
+  - [x] Implement automated downloader for Zerodha `instruments.csv`, Upstox `complete.json.gz`, and NSE `EQUITY_L.csv`.
+  - [x] Build fast in-memory trie and multi-key index for Token $\leftrightarrow$ Symbol $\leftrightarrow$ ISIN $\leftrightarrow$ `InstrumentId`.
+  - [x] Implement dynamic tick size and lot size resolver.
+- [x] **3.2 Corporate Actions Engine (`honba-me-normalizer`)**
+  - [x] Build corporate action event ledger (splits, bonuses, dividends, symbol changes).
+  - [x] Implement backward/forward price adjustment calculation for OHLCV bars.
+  - [x] Expose adjusted series generation to backtester and feed readers.
 
 ### Phase 4: Parquet Lakehouse v2, Bhavcopy & Live Tick Recorder (M3) — Week 8–10
 - [ ] **4.1 Parquet Lakehouse v2 (`honba-me-feed`)**

@@ -22,28 +22,40 @@
 //! }
 //! ```
 
+pub mod adx;
 pub mod atr;
 pub mod bollinger;
+pub mod cpr;
 pub mod donchian;
 pub mod ema;
 pub mod indicator;
 pub mod macd;
+pub mod obv;
+pub mod rma;
 pub mod render;
 pub mod rsi;
 pub mod screener;
 pub mod sma;
 pub mod stochastic;
+pub mod supertrend;
+pub mod vwap;
 pub mod williams_r;
 
+pub use adx::Adx;
 pub use atr::Atr;
 pub use bollinger::{BollingerBands, BollingerValue};
+pub use cpr::Cpr;
 pub use donchian::{Donchian, DonchianValue};
 pub use ema::Ema;
 pub use indicator::Indicator;
 pub use macd::{Macd, MacdValue};
+pub use obv::Obv;
+pub use rma::Rma;
 pub use rsi::Rsi;
 pub use sma::Sma;
 pub use stochastic::{Stochastic, StochasticValue};
+pub use supertrend::Supertrend;
+pub use vwap::Vwap;
 pub use williams_r::WilliamsR;
 
 #[cfg(test)]
