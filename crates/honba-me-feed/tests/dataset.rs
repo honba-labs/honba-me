@@ -10,7 +10,7 @@ use arrow::record_batch::RecordBatch;
 use parquet::arrow::ArrowWriter;
 
 use honba_engine::{AuditKind, DataFeed, Engine, EngineOutput, Handler, Result};
-use honba_feed::import::parquet_source::{bar_schema, ParquetBarSource, ParquetError};
+use honba_feed::import::parquet_source::{ParquetBarSource, ParquetError, bar_schema};
 use honba_feed::{Dataset, DatasetBuildError, DatasetFeed};
 use honba_messages::{
     BarAggregation, BarSpecification, BarType, Event, Exchange, InstrumentId, PriceType, UnixNanos,

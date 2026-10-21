@@ -74,8 +74,7 @@ async fn bhavcopy_connector_parses_fixture() {
 
 #[tokio::test]
 async fn bar_ts_is_ist_open_independent_of_local_tz() {
-    const SEC_ONE: &str =
-        "SYMBOL, SERIES, DATE1, OPEN_PRICE, HIGH_PRICE, LOW_PRICE, CLOSE_PRICE, TTL_TRD_QNTY\n\
+    const SEC_ONE: &str = "SYMBOL, SERIES, DATE1, OPEN_PRICE, HIGH_PRICE, LOW_PRICE, CLOSE_PRICE, TTL_TRD_QNTY\n\
 RELIANCE, EQ, 02-Jan-2024, 100.0, 110.0, 90.0, 105.0, 1000\n";
 
     let mut connector = connector(SEC_ONE).await;

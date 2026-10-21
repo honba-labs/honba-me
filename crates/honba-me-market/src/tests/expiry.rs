@@ -2,7 +2,7 @@
 
 use honba_entities::InstrumentKind;
 
-use super::{date, Holidays};
+use super::{Holidays, date};
 use crate::{ExpiryRules, LastThursdayExpiry};
 
 #[test]

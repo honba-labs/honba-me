@@ -9,7 +9,7 @@ use honba_messages::{
 use honba_ports::{PortError, TickReader, TickRequest};
 use parquet::arrow::ArrowWriter;
 
-use crate::parquet_ticks::{tick_schema, write_tick_file, ParquetTickStore, TICK_DIR};
+use crate::parquet_ticks::{ParquetTickStore, TICK_DIR, tick_schema, write_tick_file};
 
 struct TempDir(PathBuf);
 

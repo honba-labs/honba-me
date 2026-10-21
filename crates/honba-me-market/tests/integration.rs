@@ -4,14 +4,14 @@
 use chrono::{NaiveDate, NaiveTime};
 
 use honba_entities::InstrumentKind;
+use honba_market::Result;
 use honba_market::calendar::{HolidaySource, Session, TradingCalendar};
 use honba_market::india::calendar::NseCalendar;
 use honba_market::india::costs::{CostModel, CostModelSource, Segment, SttRates};
 use honba_market::india::profile::IndiaMarketProfile;
-use honba_market::india::universes::{Nifty50, NIFTY50_SIZE};
+use honba_market::india::universes::{NIFTY50_SIZE, Nifty50};
 use honba_market::profile::MarketProfile;
 use honba_market::universes::{Universe, UniverseSource};
-use honba_market::Result;
 use honba_messages::OrderSide;
 
 fn date(y: i32, m: u32, d: u32) -> NaiveDate {

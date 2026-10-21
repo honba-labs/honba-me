@@ -2,7 +2,7 @@
 
 use honba_entities::{InstrumentKind, PositionSide};
 
-use super::{date, Holidays};
+use super::{Holidays, date};
 use crate::settlement::PercentageMarginModel;
 use crate::{MarginModel, MarginRequirement, MarketProfile, SettlementRules, SettlementType};
 use crate::{SettlementSchedule, StandardRollingSettlement};

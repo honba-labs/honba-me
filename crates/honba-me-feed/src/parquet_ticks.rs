@@ -35,8 +35,8 @@ use honba_messages::{
     AggressorSide, Exchange, InstrumentId, QuoteTick, TradeId, TradeTick, UnixNanos,
 };
 use honba_ports::{PortError, PortResult, TickReader, TickRequest};
-use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use parquet::arrow::ArrowWriter;
+use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use thiserror::Error;
 
 /// The directory under a store root that holds the tick Parquet files.

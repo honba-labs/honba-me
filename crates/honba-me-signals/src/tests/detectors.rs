@@ -123,12 +123,14 @@ fn detectors_do_not_fire_before_warmup() {
     let volumes = vec![1_000.0; 5];
     let params = Params::for_horizon(SignalHorizon::Swing);
     let series = Series::compute(&bars(&[10.0, 11.0, 12.0, 11.0, 10.0], &volumes), &params);
-    assert!(trend::EmaCross {
-        fast: params.ema_fast,
-        slow: params.ema_slow
-    }
-    .detect(&series)
-    .is_empty());
+    assert!(
+        trend::EmaCross {
+            fast: params.ema_fast,
+            slow: params.ema_slow
+        }
+        .detect(&series)
+        .is_empty()
+    );
     assert!(momentum::MacdCross.detect(&series).is_empty());
 }
 

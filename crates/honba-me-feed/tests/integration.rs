@@ -10,7 +10,7 @@ use parquet::arrow::ArrowWriter;
 
 use honba_analytics::{EquityStats, PerformanceReport, TradeStats};
 use honba_feed::export::{CsvReportWriter, JsonReportWriter, MarkdownReportWriter, ReportWriter};
-use honba_feed::import::parquet_source::{bar_schema, ParquetBarSource, ParquetError};
+use honba_feed::import::parquet_source::{ParquetBarSource, ParquetError, bar_schema};
 use honba_messages::{BarAggregation, BarSpecification, Exchange, InstrumentId, PriceType};
 
 fn sample_report() -> PerformanceReport {

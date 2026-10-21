@@ -17,7 +17,7 @@ pub mod universes;
 
 pub use error::{IndiaError, Result};
 pub use fno::{
-    default_fno_lot_size, format_fno_symbol, parse_fno_symbol, FnoContract, FnoExpiry,
-    FnoParseError,
+    FnoContract, FnoExpiry, FnoParseError, default_fno_lot_size, format_fno_symbol,
+    parse_fno_symbol,
 };
 pub use profile::IndiaMarketProfile;

@@ -2,7 +2,7 @@
 
 use chrono::NaiveTime;
 
-use super::{date, Holidays};
+use super::{Holidays, date};
 use crate::{MarketCalendar, Session};
 
 fn hm(h: u32, m: u32) -> NaiveTime {

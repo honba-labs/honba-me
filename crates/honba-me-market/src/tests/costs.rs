@@ -6,8 +6,8 @@ use chrono::NaiveDate;
 use honba_messages::OrderSide;
 
 use crate::{
-    edge_after_costs, Charge, CostModelSource, CostSchedule, DatedCostScheduleSource, FeeBreakdown,
-    MarketSegment, NullCostSchedule,
+    Charge, CostModelSource, CostSchedule, DatedCostScheduleSource, FeeBreakdown, MarketSegment,
+    NullCostSchedule, edge_after_costs,
 };
 
 fn date(y: i32, m: u32, d: u32) -> NaiveDate {
@@ -115,7 +115,9 @@ fn charges_effective_dated() {
     assert_eq!(total_on(late), 2.0);
     assert_eq!(total_on(date(2027, 1, 1)), 2.0);
     // An empty source has no schedule for any date.
-    assert!(DatedCostScheduleSource::new(Vec::new())
-        .schedule_for(middle)
-        .is_err());
+    assert!(
+        DatedCostScheduleSource::new(Vec::new())
+            .schedule_for(middle)
+            .is_err()
+    );
 }

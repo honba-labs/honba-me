@@ -13,8 +13,8 @@ use std::sync::Arc;
 
 use honba_engine::ExecutionEngine;
 use honba_entities::{Currency, Money};
-use honba_market::india::costs::NseCashEquitySchedule;
 use honba_market::MarketSegment;
+use honba_market::india::costs::NseCashEquitySchedule;
 use honba_messages::{
     Bar, BarAggregation, BarSpecification, BarType, Exchange, InstrumentId, Order, OrderId,
     OrderSide, OrderType, PriceType, TimeInForce, UnixNanos,

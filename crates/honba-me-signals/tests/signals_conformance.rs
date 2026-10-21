@@ -11,7 +11,7 @@ use honba_entities::SignalDirection;
 use honba_messages::{
     Bar, BarAggregation, BarSpecification, BarType, Exchange, InstrumentId, PriceType, UnixNanos,
 };
-use honba_signals::{catalog, compute, Params};
+use honba_signals::{Params, catalog, compute};
 use serde_json::Value;
 
 const DAY: &str = include_str!("../../../schema/conformance/signals_day.json");

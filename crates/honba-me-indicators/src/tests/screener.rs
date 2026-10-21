@@ -3,12 +3,12 @@
 
 use honba_entities::{FilterOp, MetricRef, ScreenerFilterGroup, ScreenerFilterPredicate};
 use honba_messages::Bar;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{any_instrument, hlc};
 use crate::screener::{
-    evaluate_group, evaluate_predicate, group_metric_keys, group_timeframes, latest_metrics,
-    py_float_repr, validate_group, ScreenerError, MAX_GROUP_DEPTH,
+    MAX_GROUP_DEPTH, ScreenerError, evaluate_group, evaluate_predicate, group_metric_keys,
+    group_timeframes, latest_metrics, py_float_repr, validate_group,
 };
 
 fn closes(values: &[f64]) -> Vec<Bar> {

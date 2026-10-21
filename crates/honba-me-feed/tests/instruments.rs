@@ -11,7 +11,7 @@ use arrow::record_batch::RecordBatch;
 use chrono::NaiveDate;
 use honba_engine::{Engine, EngineOutput, ExecutionEngine, Handler, Result as EngineResult};
 use honba_entities::{Currency, Trade};
-use honba_feed::{snapshot_schema, CatalogInstrumentMaster};
+use honba_feed::{CatalogInstrumentMaster, snapshot_schema};
 use honba_messages::{
     Event, Exchange, InstrumentId, Message, Order, OrderId, OrderSide, OrderType, TimeInForce,
     UnixNanos,
@@ -127,11 +127,13 @@ async fn backtest_resolves_expired_contract() {
     let live = InstrumentId::new("NIFTY24DECFUT", Exchange::new("NSE"));
 
     // The dated catalog is the gate: the contract expired on 2024-10-31.
-    assert!(master
-        .resolve_as_of(&expired, as_of)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(
+        master
+            .resolve_as_of(&expired, as_of)
+            .await
+            .unwrap()
+            .is_none()
+    );
     assert!(master.resolve_as_of(&live, as_of).await.unwrap().is_some());
 
     let ts = UnixNanos::from_u64(1_700_000_000_000_000_000);

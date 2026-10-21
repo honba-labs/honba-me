@@ -8,7 +8,7 @@ use parquet::arrow::ArrowWriter;
 
 use honba_messages::{BarAggregation, BarSpecification, Exchange, InstrumentId, PriceType};
 
-use crate::import::parquet_source::{bar_schema, ParquetBarSource, ParquetError};
+use crate::import::parquet_source::{ParquetBarSource, ParquetError, bar_schema};
 
 struct TempFileGuard {
     path: std::path::PathBuf,

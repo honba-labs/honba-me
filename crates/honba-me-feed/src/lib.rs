@@ -25,9 +25,9 @@ pub use export::{
     CsvReportWriter, ExportError, JsonReportWriter, MarkdownReportWriter, ReportWriter,
 };
 pub use import::parquet_source::{ParquetBarSource, ParquetError};
-pub use instruments::{snapshot_schema, CatalogError, CatalogInstrumentMaster};
+pub use instruments::{CatalogError, CatalogInstrumentMaster, snapshot_schema};
 pub use live_quotes::LiveQuoteStore;
-pub use parquet_ticks::{tick_schema, write_tick_file, ParquetTickStore, TickStoreError, TICK_DIR};
+pub use parquet_ticks::{ParquetTickStore, TICK_DIR, TickStoreError, tick_schema, write_tick_file};
 pub use reader::{DatasetReader, ReaderError};
 pub use ticks::InMemoryTickReader;
 

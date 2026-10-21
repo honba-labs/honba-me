@@ -12,7 +12,7 @@ use honba_messages::{Exchange, InstrumentId};
 use honba_ports::InstrumentMaster;
 use parquet::arrow::ArrowWriter;
 
-use crate::instruments::{snapshot_schema, CatalogInstrumentMaster};
+use crate::instruments::{CatalogInstrumentMaster, snapshot_schema};
 
 struct TempDir(PathBuf);
 
@@ -210,11 +210,13 @@ async fn resolve_as_of_old_symbol() {
     assert_eq!(call.option_type(), Some(OptionType::Call));
     assert_eq!(call.strike(), Some(24500.0));
     assert_eq!(call.underlying(), Some("NIFTY"));
-    assert!(master
-        .resolve_as_of(&id("NIFTY24OCT24500CE"), date(2024, 11, 15))
-        .await
-        .unwrap()
-        .is_none());
+    assert!(
+        master
+            .resolve_as_of(&id("NIFTY24OCT24500CE"), date(2024, 11, 15))
+            .await
+            .unwrap()
+            .is_none()
+    );
 
     // The live December contract still resolves after the October one expired.
     let live = master
@@ -239,8 +241,9 @@ async fn resolve_as_of_old_symbol() {
     // After the October expiry only the live instruments remain.
     let later = master.snapshot(date(2024, 11, 15)).await.unwrap();
     assert_eq!(later.len(), 2);
-    assert!(later.iter().all(|d| d
-        .instrument
-        .expiry()
-        .map_or(true, |e| e >= date(2024, 11, 15))));
+    assert!(later.iter().all(|d| {
+        d.instrument
+            .expiry()
+            .map_or(true, |e| e >= date(2024, 11, 15))
+    }));
 }

@@ -223,12 +223,16 @@ fn a_rejected_row_leaves_the_builder_unchanged() {
         .push(UnixNanos::from_u64(10), 1.0, 1.0, 1.0, 1.0, 1.0)
         .expect("the first row is valid");
 
-    assert!(builder
-        .push(UnixNanos::from_u64(9), 1.0, 1.0, 1.0, 1.0, 1.0)
-        .is_err());
-    assert!(builder
-        .push(UnixNanos::from_u64(11), 1.0, 1.0, 1.0, f64::NAN, 1.0)
-        .is_err());
+    assert!(
+        builder
+            .push(UnixNanos::from_u64(9), 1.0, 1.0, 1.0, 1.0, 1.0)
+            .is_err()
+    );
+    assert!(
+        builder
+            .push(UnixNanos::from_u64(11), 1.0, 1.0, 1.0, f64::NAN, 1.0)
+            .is_err()
+    );
     assert_eq!(builder.len(), 1);
 
     let slice = builder.finish().expect("the builder is valid");
@@ -354,9 +358,11 @@ fn slice_messages_carry_every_bar() {
         })
         .collect();
     assert_eq!(closes, vec![5.0, 6.0]);
-    assert!(messages
-        .iter()
-        .all(|message| message.ts_init() == UnixNanos::from_u64(7)));
+    assert!(
+        messages
+            .iter()
+            .all(|message| message.ts_init() == UnixNanos::from_u64(7))
+    );
 
     let empty = slice_with_closes("TCS", &[], &[]);
     assert!(empty.messages(UnixNanos::from_u64(7)).is_empty());
@@ -417,10 +423,11 @@ fn an_exhausted_feed_keeps_returning_none() {
 
     assert!(feed.next().expect("the first bar").is_some());
     for _ in 0..3 {
-        assert!(feed
-            .next()
-            .expect("an exhausted feed does not fail")
-            .is_none());
+        assert!(
+            feed.next()
+                .expect("an exhausted feed does not fail")
+                .is_none()
+        );
     }
 }
 

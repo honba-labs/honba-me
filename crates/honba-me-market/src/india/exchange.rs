@@ -105,7 +105,7 @@ pub fn resolve_instrument(
             return Err(InstrumentParseError::Conflict {
                 qualified: q,
                 explicit: e,
-            })
+            });
         }
         (Some(e), _) | (None, Some(e)) => e,
         (None, None) => IndiaExchange::Nse,

@@ -1,6 +1,6 @@
 //! Unit tests for `crate::india::exchange`.
 
-use crate::india::exchange::{resolve_instrument, IndiaExchange, InstrumentParseError};
+use crate::india::exchange::{IndiaExchange, InstrumentParseError, resolve_instrument};
 
 #[test]
 fn exchange_parses_case_insensitively_and_displays_upper_case() {

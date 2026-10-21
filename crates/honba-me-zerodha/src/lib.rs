@@ -9,8 +9,7 @@ use tokio::sync::RwLock;
 
 use honba_core::{Exchange, InstrumentId, Price, Quantity, Tick};
 use honba_me_core::{
-    CoalescingTickBuffer, MarketDataFeed, MdError, ReconnectionManager,
-    Subscription, SymbolMapper,
+    CoalescingTickBuffer, MarketDataFeed, MdError, ReconnectionManager, Subscription, SymbolMapper,
 };
 
 /// Zerodha Kite Ticker feed adapter.

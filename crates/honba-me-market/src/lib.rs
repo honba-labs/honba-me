@@ -44,8 +44,8 @@ pub mod india;
 pub use aggregator::SessionBarAggregator;
 pub use calendar::{HolidaySource, MarketCalendar, Session, TradingCalendar};
 pub use costs::{
-    edge_after_costs, Charge, CostModelSource, CostSchedule, DatedCostScheduleSource, FeeBreakdown,
-    MarketSegment,
+    Charge, CostModelSource, CostSchedule, DatedCostScheduleSource, FeeBreakdown, MarketSegment,
+    edge_after_costs,
 };
 pub use error::{MarketError, Result};
 pub use expiry::{ExpiryRules, LastThursdayExpiry};
@@ -75,13 +75,13 @@ pub use india::costs::stt::SttRates;
 pub use india::error::IndiaError;
 #[cfg(feature = "india")]
 pub use india::fno::{
-    default_fno_lot_size, format_fno_symbol, parse_fno_symbol, FnoContract, FnoExpiry,
-    FnoParseError,
+    FnoContract, FnoExpiry, FnoParseError, default_fno_lot_size, format_fno_symbol,
+    parse_fno_symbol,
 };
 #[cfg(feature = "india")]
 pub use india::profile::IndiaMarketProfile;
 #[cfg(feature = "india")]
-pub use india::universes::nifty50::{Nifty50, NIFTY50_SIZE};
+pub use india::universes::nifty50::{NIFTY50_SIZE, Nifty50};
 
 #[cfg(test)]
 mod tests;

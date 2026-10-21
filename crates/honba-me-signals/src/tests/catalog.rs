@@ -2,7 +2,7 @@
 
 use honba_entities::SignalHorizon;
 
-use crate::catalog::{self, Params, DETECTORS, REASON_CODES, RULESETS};
+use crate::catalog::{self, DETECTORS, Params, REASON_CODES, RULESETS};
 
 #[test]
 fn reason_codes_are_unique_and_looked_up() {

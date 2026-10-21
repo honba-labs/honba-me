@@ -2,7 +2,7 @@
 
 use honba_messages::OrderSide;
 
-use crate::india::costs::{NseCashEquitySchedule, CHARGE_IPFT};
+use crate::india::costs::{CHARGE_IPFT, NseCashEquitySchedule};
 use crate::{CostModelSource, CostSchedule, MarketSegment};
 
 fn seg() -> MarketSegment {
