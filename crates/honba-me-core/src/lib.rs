@@ -532,3 +532,5 @@ mod tests {
         ));
     }
 }
+
+pub mod ws_client;

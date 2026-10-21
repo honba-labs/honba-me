@@ -3,11 +3,13 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use futures::stream::BoxStream;
+use flate2::read::ZlibDecoder;
 use rust_decimal::Decimal;
+use std::io::Read;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use honba_core::{Exchange, InstrumentId, Price, Quantity, Tick};
+use honba_core::{DepthLevel, Exchange, InstrumentId, Price, Quantity, Tick};
 use honba_me_core::{
     CoalescingTickBuffer, FeedHealth, MarketDataFeed, MdError, ReconnectionManager, Subscription,
     SymbolMapper,
@@ -103,6 +105,111 @@ impl ZerodhaFeed {
             receive_ts: now,
             band: None,
         })
+    }
+
+    /// Parse a 44-byte Kite Full Equity Quote binary packet into canonical [`Tick::Quote`].
+    ///
+    /// Layout: token(4), ltp(4), last_traded_qty(4), avg_traded_price(4), volume(8),
+    /// buy_quantity(4), sell_quantity(4), open(4), high(4), low(4), close(4)
+    pub fn parse_binary_quote_44b(bytes: &[u8], mapper: &SymbolMapper) -> Result<Tick, MdError> {
+        if bytes.len() < 44 {
+            return Err(MdError::Transport("Full quote packet too short".into()));
+        }
+
+        let token = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+        let ltp_raw = u32::from_be_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
+        let ltp_dec = Decimal::from(ltp_raw) / Decimal::from(100);
+        let last_qty_raw = u32::from_be_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]);
+        let avg_price_raw = u32::from_be_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]);
+        let volume_raw = u64::from_be_bytes([bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23]]);
+        let buy_qty_raw = u32::from_be_bytes([bytes[24], bytes[25], bytes[26], bytes[27]]);
+        let sell_qty_raw = u32::from_be_bytes([bytes[28], bytes[29], bytes[30], bytes[31]]);
+        let open_raw = u32::from_be_bytes([bytes[32], bytes[33], bytes[34], bytes[35]]);
+        let high_raw = u32::from_be_bytes([bytes[36], bytes[37], bytes[38], bytes[39]]);
+        let low_raw = u32::from_be_bytes([bytes[40], bytes[41], bytes[42], bytes[43]]);
+
+        let token_str = token.to_string();
+        let inst = mapper.to_canonical(&token_str).unwrap_or_else(|| {
+            InstrumentId::new(Exchange::Nse, format!("TOKEN-{}", token)).with_token(token_str)
+        });
+
+        let now = Utc::now();
+        Ok(Tick::Quote {
+            instrument: inst,
+            bid: Price::new(Decimal::from(low_raw) / Decimal::from(100)),
+            ask: Price::new(Decimal::from(high_raw) / Decimal::from(100)),
+            bid_qty: Quantity::new(Decimal::from(buy_qty_raw)),
+            ask_qty: Quantity::new(Decimal::from(sell_qty_raw)),
+            last_price: Some(Price::new(ltp_dec)),
+            exchange_ts: now,
+            receive_ts: now,
+            band: None,
+        })
+    }
+
+    /// Parse a 184-byte Kite Full Market Depth binary packet into canonical [`Tick::Depth`].
+    ///
+    /// Layout: quote fields (44 bytes), OI(4), day_high(4), day_low(4),
+    /// 5 bid levels × 12 bytes (price(4), qty(4), orders(4)),
+    /// 5 ask levels × 12 bytes (price(4), qty(4), orders(4))
+    pub fn parse_binary_depth_184b(bytes: &[u8], mapper: &SymbolMapper) -> Result<Tick, MdError> {
+        if bytes.len() < 184 {
+            return Err(MdError::Transport("Depth packet too short".into()));
+        }
+
+        // Parse quote portion (first 44 bytes)
+        let token = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+        let ltp_raw = u32::from_be_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
+        let ltp_dec = Decimal::from(ltp_raw) / Decimal::from(100);
+        let volume_raw = u64::from_be_bytes([bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23]]);
+
+        let token_str = token.to_string();
+        let inst = mapper.to_canonical(&token_str).unwrap_or_else(|| {
+            InstrumentId::new(Exchange::Nse, format!("TOKEN-{}", token)).with_token(token_str)
+        });
+
+        // Parse 5 bid levels (offset 56 after quote header + OI + day_high + day_low)
+        let mut bids = Vec::with_capacity(5);
+        for i in 0..5 {
+            let offset = 56 + i * 12;
+            let price_raw = u32::from_be_bytes([bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3]]);
+            let qty_raw = u32::from_be_bytes([bytes[offset+4], bytes[offset+5], bytes[offset+6], bytes[offset+7]]);
+            let price = Price::new(Decimal::from(price_raw) / Decimal::from(100));
+            let qty = Quantity::new(Decimal::from(qty_raw));
+            bids.push(DepthLevel { price, quantity: qty, orders_count: None });
+        }
+
+        // Parse 5 ask levels
+        let mut asks = Vec::with_capacity(5);
+        for i in 0..5 {
+            let offset = 116 + i * 12;
+            let price_raw = u32::from_be_bytes([bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3]]);
+            let qty_raw = u32::from_be_bytes([bytes[offset+4], bytes[offset+5], bytes[offset+6], bytes[offset+7]]);
+            let price = Price::new(Decimal::from(price_raw) / Decimal::from(100));
+            let qty = Quantity::new(Decimal::from(qty_raw));
+            asks.push(DepthLevel { price, quantity: qty, orders_count: None });
+        }
+
+        let now = Utc::now();
+        Ok(Tick::Depth {
+            instrument: inst,
+            bids,
+            asks,
+            last_price: Some(Price::new(ltp_dec)),
+            exchange_ts: now,
+            receive_ts: now,
+        })
+    }
+
+    /// Decompress zlib-compressed binary data from Kite Ticker.
+    pub fn decompress_zlib(data: &[u8]) -> Result<Vec<u8>, MdError> {
+        use flate2::read::ZlibDecoder;
+        use std::io::Read;
+        let mut decoder = ZlibDecoder::new(data);
+        let mut decompressed = Vec::new();
+        decoder.read_to_end(&mut decompressed)
+            .map_err(|e| MdError::Transport(format!("zlib decompression failed: {e}")))?;
+        Ok(decompressed)
     }
 }
 
