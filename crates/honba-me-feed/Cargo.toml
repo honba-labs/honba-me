@@ -11,19 +11,16 @@ description = "Market data catalog, Parquet import/export, and report loaders fo
 name = "honba_feed"
 
 [dependencies]
-honba-messages = { workspace = true }
-honba-entities = { workspace = true }
-honba-engine = { workspace = true }
-honba-analytics = { workspace = true }
-honba-ports = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
-chrono = { workspace = true }
-arrow = { workspace = true }
-parquet = { workspace = true }
-csv = { workspace = true }
-async-trait = { workspace = true }
+honba-core.workspace = true
+honba-me-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+chrono.workspace = true
+arrow.workspace = true
+parquet.workspace = true
+csv.workspace = true
+async-trait.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }

@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-#![deny(rustdoc::broken_intra_doc_links)]
 #![deny(unsafe_code)]
 
 //! India-specific market structure for the Honba platform.

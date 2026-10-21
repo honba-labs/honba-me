@@ -5,7 +5,7 @@
 //! with the incremental indicators in `honba-indicators`, so the computation is causal.
 
 use honba_indicators::{Ema, Indicator, Macd, MacdValue, Rsi, Sma};
-use honba_messages::Bar;
+use honba_core::Bar;
 
 use crate::catalog::Params;
 
@@ -22,7 +22,7 @@ pub(crate) struct Series {
     /// Volumes.
     pub volume: Vec<f64>,
     /// UTC day number of each bar (`ts_event / 1 day`), for session grouping.
-    pub days: Vec<u64>,
+    pub days: Vec<i64>,
     /// Fast EMA of close.
     pub ema_fast: Vec<Option<f64>>,
     /// Slow EMA of close.
@@ -58,18 +58,18 @@ impl Series {
         let mut vol_sma_ind = Sma::new(params.vol_window);
 
         for bar in bars {
-            let c = bar.close();
-            open.push(bar.open());
-            high.push(bar.high());
-            low.push(bar.low());
+            let c = bar.close.0.to_string().parse::<f64>().unwrap_or(0.0);
+            open.push(bar.open.0.to_string().parse::<f64>().unwrap_or(0.0));
+            high.push(bar.high.0.to_string().parse::<f64>().unwrap_or(0.0));
+            low.push(bar.low.0.to_string().parse::<f64>().unwrap_or(0.0));
             close.push(c);
-            volume.push(bar.volume());
-            days.push(bar.ts_event().as_u64() / 86_400_000_000_000);
+            volume.push(bar.volume.0.to_string().parse::<f64>().unwrap_or(0.0));
+            days.push(bar.timestamp.timestamp_millis() / 86_400_000);
             ema_fast.push(ema_fast_ind.update(c));
             ema_slow.push(ema_slow_ind.update(c));
             rsi.push(rsi_ind.update(c));
             macd.push(macd_ind.update(c));
-            vol_sma.push(vol_sma_ind.update(bar.volume()));
+            vol_sma.push(vol_sma_ind.update(volume.last().copied().unwrap_or(0.0)));
         }
 
         Self {

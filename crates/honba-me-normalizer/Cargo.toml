@@ -7,4 +7,3 @@ license.workspace = true
 [dependencies]
 honba-core.workspace = true
 honba-me-core.workspace = true
-honba-kokoro-types.workspace = true

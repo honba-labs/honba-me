@@ -1,6 +1,6 @@
 //! Securities Transaction Tax rates.
 
-use honba_messages::OrderSide;
+use honba_core::OrderSide;
 
 /// Securities Transaction Tax rates for a given effective period.
 #[derive(Clone, Copy, Debug, PartialEq)]

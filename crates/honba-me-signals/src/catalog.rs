@@ -5,7 +5,35 @@
 //! [`ReasonCode`] fires and cites its numbers; the engine reads the group, polarity and weight
 //! from this table. Adding a code is an additive change; renaming or reusing one is not.
 
-use honba_entities::{ReasonGroup, ReasonPolarity, SignalHorizon};
+use serde::{Deserialize, Serialize};
+
+/// Reason group classification.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReasonGroup {
+    Trend,
+    Momentum,
+    Volatility,
+    Volume,
+    MeanReversion,
+    PriceAction,
+    Level,
+}
+
+/// Reason polarity (bullish/bearish/neutral).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReasonPolarity {
+    Bullish,
+    Bearish,
+    Neutral,
+}
+
+/// Signal horizon (timeframe classification).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SignalHorizon {
+    Intraday,
+    Swing,
+    Positional,
+}
 
 /// A frozen reason code: the stable identity of one detector firing (ADR 0031 §4).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -361,6 +389,21 @@ impl Params {
                 vol_window: 20,
                 rel_volume: 1.2,
                 breakout_window: 55,
+                pivot_span: 2,
+                range_52w: 252,
+            },
+            SignalHorizon::Positional => Self {
+                ema_fast: 50,
+                ema_slow: 200,
+                rsi_period: 14,
+                rsi_oversold: 30.0,
+                rsi_overbought: 70.0,
+                macd_fast: 12,
+                macd_slow: 26,
+                macd_signal: 9,
+                vol_window: 20,
+                rel_volume: 1.0,
+                breakout_window: 200,
                 pivot_span: 2,
                 range_52w: 252,
             },

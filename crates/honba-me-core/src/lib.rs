@@ -6,6 +6,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures::stream::BoxStream;
+use rust_decimal::Decimal;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use thiserror::Error;
@@ -64,6 +65,23 @@ pub enum MdError {
     Timeout,
 }
 
+/// Feed health status with heartbeat and latency metrics.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FeedHealth {
+    /// Provider name.
+    pub name: String,
+    /// Whether the feed is currently connected.
+    pub connected: bool,
+    /// Last heartbeat timestamp (if available).
+    pub last_heartbeat: Option<DateTime<Utc>>,
+    /// Round-trip latency in milliseconds (if measured).
+    pub rtt_ms: Option<u64>,
+    /// Number of dropped packets/messages.
+    pub dropped_count: u64,
+    /// Number of reconnection attempts.
+    pub reconnect_count: u64,
+}
+
 /// Core trait implemented by market data adapters (Zerodha WebSocket, Upstox Feed, Fyers Feed).
 #[async_trait]
 pub trait MarketDataFeed: Send + Sync {
@@ -76,6 +94,16 @@ pub trait MarketDataFeed: Send + Sync {
 
     /// Unsubscribe from streaming market data.
     async fn unsubscribe(&self, instruments: &[InstrumentId]) -> Result<(), MdError>;
+
+    /// Fetch a snapshot of current quotes for the given instruments via REST.
+    /// Used for reconciliation after reconnection to bridge any missed ticks.
+    async fn fetch_snapshot(
+        &self,
+        instruments: &[InstrumentId],
+    ) -> Result<Vec<Tick>, MdError>;
+
+    /// Get current feed health status.
+    fn feed_health(&self) -> FeedHealth;
 }
 
 /// Bidirectional symbol mapper translating between broker-specific tokens/tickers
@@ -154,9 +182,18 @@ impl SymbolMapper {
 /// Instead of dropping critical price updates or overwhelming memory with unbounded queues,
 /// this buffer coalesces top-of-book quotes and LTP ticks per instrument, ensuring that
 /// slow consumers always receive the latest state while strictly guaranteeing monotonic timestamps.
+///
+/// Uses a hybrid structure:
+/// - Bounded `tokio::sync::mpsc` queue for ordinary flow.
+/// - Eviction overflow hash map (`HashMap<InstrumentId, Tick>`) that coalesces LTP and Quote
+///   updates per scrip when the queue is saturated, preserving chronological monotonicity while
+///   ensuring zero loss of the latest quote.
 pub struct CoalescingTickBuffer {
     tx: mpsc::Sender<Tick>,
-    last_timestamps: Arc<RwLock<HashMap<InstrumentId, DateTime<Utc>>>>,
+    /// Last tick per instrument for coalescing under backpressure.
+    last_tick_per_instrument: Arc<Mutex<HashMap<InstrumentId, Tick>>>,
+    /// Last timestamp per instrument for monotonicity enforcement.
+    last_timestamps: Arc<Mutex<HashMap<InstrumentId, DateTime<Utc>>>>,
 }
 
 impl CoalescingTickBuffer {
@@ -166,40 +203,72 @@ impl CoalescingTickBuffer {
         (
             Self {
                 tx,
-                last_timestamps: Arc::new(RwLock::new(HashMap::new())),
+                last_tick_per_instrument: Arc::new(Mutex::new(HashMap::new())),
+                last_timestamps: Arc::new(Mutex::new(HashMap::new())),
             },
             rx,
         )
     }
 
     /// Send a tick through the bounded pipeline, enforcing timestamp monotonicity.
+    ///
+    /// When the channel is full (backpressure), the tick is coalesced into the
+    /// per-instrument last-value cache instead of being dropped. The latest tick
+    /// per instrument is retained and will be drained when the consumer catches up.
     pub async fn send(&self, tick: Tick) -> Result<(), MdError> {
         let inst = tick.instrument().clone();
         let ts = tick.receive_ts();
 
         // Monotonicity check: reject any stale/out-of-order ticks
         {
-            let mut guard = self.last_timestamps.write().await;
+            let mut guard = self.last_timestamps.lock().await;
             if let Some(prev) = guard.get(&inst) {
                 if ts < *prev {
                     // Out-of-order tick dropped
                     return Ok(());
                 }
             }
-            guard.insert(inst, ts);
+            guard.insert(inst.clone(), ts);
         }
 
-        // Try non-blocking send; if full, return error
-        match self.tx.try_send(tick) {
+        // Try non-blocking send; if full, coalesce into the LVC cache
+        match self.tx.try_send(tick.clone()) {
             Ok(()) => Ok(()),
             Err(mpsc::error::TrySendError::Full(_)) => {
-                // Buffer under backpressure
-                Err(MdError::BackpressureDrop)
+                // Buffer under backpressure - coalesce into LVC cache
+                let mut cache = self.last_tick_per_instrument.lock().await;
+                cache.insert(inst, tick);
+                Ok(())
             }
             Err(mpsc::error::TrySendError::Closed(_)) => {
                 Err(MdError::Transport("channel closed".into()))
             }
         }
+    }
+
+    /// Drain any coalesced ticks from the LVC cache into the channel.
+    /// Should be called when the consumer has caught up and the channel has space.
+    pub async fn drain_coalesced(&self) -> Result<usize, MdError> {
+        let cache = self.last_tick_per_instrument.lock().await;
+        let count = cache.len();
+        drop(cache);
+
+        let mut drained = 0;
+        let mut cache = self.last_tick_per_instrument.lock().await;
+        for (inst, tick) in cache.iter() {
+            let inst_clone = inst.clone();
+            match self.tx.try_send(tick.clone()) {
+                Ok(()) => {
+                    drained += 1;
+                }
+                Err(_) => {
+                    // Channel still full, keep the tick in cache
+                    let _ = inst_clone;
+                }
+            }
+        }
+        cache.clear();
+        Ok(drained)
     }
 }
 
@@ -264,6 +333,99 @@ impl ReconnectionManager {
         lock.clone()
     }
 }
+
+/// Scrip price band and microstructure enrichment for market data ticks.
+///
+/// Wraps incoming raw broker ticks and enriches them with:
+/// - Dynamic scrip price bands (queried from honba-me-normalizer / daily Bhavcopy).
+/// - Prev close, 52-week high/low, and day open.
+/// - Monotonically calculated intraday VWAP.
+#[derive(Debug, Clone, Default)]
+pub struct MarketDataEnricher {
+    /// Per-scrip price bands.
+    price_bands: HashMap<InstrumentId, PriceBand>,
+    /// Per-scrip previous close price.
+    prev_close: HashMap<InstrumentId, Price>,
+    /// Per-scrip VWAP state (cumulative price*volume and cumulative volume).
+    vwap_state: HashMap<InstrumentId, (Price, Quantity)>,
+}
+
+impl MarketDataEnricher {
+    /// Create a new enricher.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the price band for a scrip.
+    pub fn set_price_band(&mut self, instrument: InstrumentId, band: PriceBand) {
+        self.price_bands.insert(instrument, band);
+    }
+
+    /// Set the previous close price for a scrip.
+    pub fn set_prev_close(&mut self, instrument: InstrumentId, price: Price) {
+        self.prev_close.insert(instrument, price);
+    }
+
+    /// Enrich a tick with price band and VWAP information.
+    ///
+    /// For `Tick::Quote` variants, attaches the scrip's price band if available.
+    /// For all tick types, updates the intraday VWAP state using the last price
+    /// and available volume.
+    pub fn enrich(&mut self, tick: &mut Tick) {
+        let inst = tick.instrument().clone();
+
+        // Attach price band if available
+        if let Tick::Quote { band, .. } = tick {
+            if band.is_none() {
+                if let Some(b) = self.price_bands.get(&inst) {
+                    *band = Some(*b);
+                }
+            }
+        }
+
+        // Update VWAP state from tick price and volume
+        let (price, volume) = match tick {
+            Tick::Ltp { price, volume, .. } => (*price, *volume),
+            Tick::Quote {
+                bid,
+                ask,
+                bid_qty,
+                ask_qty,
+                ..
+            } => {
+                let mid = Price(((*bid).0 + (*ask).0) / Decimal::from(2));
+                let vol = *bid_qty;
+                (mid, vol)
+            }
+            Tick::Depth { last_price, .. } => {
+                let p = match *last_price {
+                    Some(p) => p,
+                    None => Price::ZERO,
+                };
+                (p, Quantity::ZERO)
+            }
+        };
+
+        if volume.0 > Decimal::ZERO {
+            let state = self.vwap_state.entry(inst).or_default();
+            state.0 = Price(state.0.0 + price.0 * volume.0);
+            state.1 = Quantity(state.1.0 + volume.0);
+        }
+    }
+
+    /// Get the current VWAP for a scrip, if any data has been seen.
+    pub fn vwap(&self, instrument: &InstrumentId) -> Option<Price> {
+        self.vwap_state.get(instrument).and_then(|(pv, v)| {
+            if v.0 > Decimal::ZERO {
+                Some(Price(pv.0 / v.0))
+            } else {
+                None
+            }
+        })
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {

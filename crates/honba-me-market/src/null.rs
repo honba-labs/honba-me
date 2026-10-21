@@ -1,16 +1,16 @@
 //! Null market pack for unit testing, offline simulation, and headless test harnesses.
 
 use chrono::{NaiveDate, NaiveTime};
-use honba_entities::{Currency, InstrumentKind, PositionSide};
-use honba_messages::OrderSide;
+use honba_core::{Currency, OrderSide};
+use serde::{Deserialize, Serialize};
 
 use crate::calendar::{MarketCalendar, Session};
 use crate::costs::{CostSchedule, FeeBreakdown, MarketSegment};
-use crate::expiry::ExpiryRules;
+use crate::expiry::{ExpiryRules, InstrumentKind};
 use crate::profile::MarketProfile;
 use crate::rules::{InstrumentRulesProvider, SymbolGrammar};
 use crate::settlement::{
-    MarginModel, MarginRequirement, SettlementRules, StandardRollingSettlement,
+    MarginModel, MarginRequirement, PositionSide, SettlementRules, StandardRollingSettlement,
 };
 
 /// A simple 24/7 calendar that treats every single day as a trading day.
@@ -117,7 +117,7 @@ impl MarketProfile for NullMarketProfile {
     }
 
     fn currency(&self) -> Currency {
-        Currency::Usd
+        Currency::Inr
     }
 
     fn calendar(&self) -> &dyn MarketCalendar {

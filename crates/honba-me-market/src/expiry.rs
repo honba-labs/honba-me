@@ -1,7 +1,16 @@
 //! Generic derivative contract expiry rules.
 
 use chrono::{Datelike, Duration, NaiveDate, Weekday};
-use honba_entities::InstrumentKind;
+
+/// Derivative instrument kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum InstrumentKind {
+    Equity,
+    Future,
+    Option,
+}
+
+use serde::{Deserialize, Serialize};
 
 use crate::calendar::MarketCalendar;
 

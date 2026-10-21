@@ -15,13 +15,11 @@ india = []
 name = "honba_market"
 
 [dependencies]
-honba-messages.workspace = true
-honba-entities.workspace = true
+honba-core.workspace = true
 chrono.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+rust_decimal.workspace = true
 
 [dev-dependencies]
-honba-engine.workspace = true
-honba-sim.workspace = true
 serde_json.workspace = true

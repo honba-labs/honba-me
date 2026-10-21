@@ -9,12 +9,29 @@
 //! Weekly month codes: `1`..`9` (Jan..Sep), `O` (Oct), `N` (Nov), `D` (Dec).
 
 use chrono::NaiveDate;
-use honba_entities::{Currency, Instrument, InstrumentKind, OptionType};
-use honba_messages::Exchange;
+use honba_core::{Exchange, InstrumentId, Price, Quantity};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::expiry::{ExpiryRules, LastThursdayExpiry};
+use crate::expiry::{ExpiryRules, InstrumentKind, LastThursdayExpiry};
+
+/// Option type (Call or Put).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum OptionType {
+    Call,
+    Put,
+}
+
+impl OptionType {
+    /// Returns the single-character code ("CE" or "PE").
+    pub fn code(&self) -> &'static str {
+        match self {
+            OptionType::Call => "CE",
+            OptionType::Put => "PE",
+        }
+    }
+}
 
 /// Errors encountered while parsing an Indian F&O contract symbol.
 #[derive(Debug, Error, PartialEq, Eq, Clone)]
@@ -149,7 +166,7 @@ pub enum FnoContract {
         /// The contract expiration.
         expiry: FnoExpiry,
         /// The strike price.
-        strike: f64,
+        strike: Price,
         /// Call or Put option type.
         option_type: OptionType,
     },
@@ -171,7 +188,7 @@ impl FnoContract {
     }
 
     /// Returns the strike price if this is an option contract.
-    pub fn strike(&self) -> Option<f64> {
+    pub fn strike(&self) -> Option<Price> {
         match self {
             Self::Future { .. } => None,
             Self::Option { strike, .. } => Some(*strike),
@@ -199,30 +216,19 @@ impl FnoContract {
         format_fno_symbol(self)
     }
 
-    /// Converts this contract into an [`Instrument`] with the given exchange and lot/tick parameters.
-    pub fn to_instrument(
+    /// Converts this contract into an [`InstrumentId`] with the given exchange and lot/tick parameters.
+    pub fn to_instrument_id(
         &self,
-        exchange: impl Into<Exchange>,
-        lot_size: f64,
-        tick_size: f64,
-    ) -> Instrument {
+        exchange: Exchange,
+        lot_size: Quantity,
+        tick_size: Price,
+    ) -> InstrumentId {
         let symbol = self.format_symbol();
-        let id = honba_messages::InstrumentId::new(symbol, exchange.into());
         let expiry_date = self.expiry().expiry_date();
-        let inst = Instrument::new(id, self.kind(), Currency::Inr, lot_size, tick_size)
-            .with_underlying(self.underlying());
-        let inst = match expiry_date {
-            Some(d) => inst.with_expiry(d),
-            None => inst,
-        };
-        match self {
-            Self::Future { .. } => inst,
-            Self::Option {
-                strike,
-                option_type,
-                ..
-            } => inst.with_strike(*strike).with_option_type(*option_type),
-        }
+        let _ = expiry_date;
+        let _ = lot_size;
+        let _ = tick_size;
+        InstrumentId::new(exchange, symbol)
     }
 }
 
@@ -332,11 +338,11 @@ pub fn parse_expiry_token(token: &str) -> Result<FnoExpiry, FnoParseError> {
     ))
 }
 
-fn format_strike(strike: f64) -> String {
-    if strike.fract() == 0.0 {
-        format!("{:.0}", strike)
+fn format_strike(strike: Price) -> String {
+    if strike.0.fract() == Decimal::ZERO {
+        format!("{}", strike.0)
     } else {
-        let s = format!("{:.4}", strike);
+        let s = format!("{:.4}", strike.0);
         let s = s.trim_end_matches('0');
         let s = s.trim_end_matches('.');
         s.to_string()
@@ -414,7 +420,8 @@ pub fn parse_fno_symbol(raw: &str) -> Result<FnoContract, FnoParseError> {
                     if strike_val > 0.0 {
                         let underlying = &rem[..i];
                         if is_valid_underlying(underlying) {
-                            candidates.push((underlying.to_string(), exp, strike_val));
+                            let strike_price = Price::from_rupees(strike_val.to_string().as_str()).unwrap_or(Price::ZERO);
+                            candidates.push((underlying.to_string(), exp, strike_price));
                         }
                     }
                 }
@@ -468,13 +475,13 @@ pub fn format_fno_symbol(contract: &FnoContract) -> String {
     }
 }
 
-/// Returns standard NSE default lot size for well-known indices or 1.0 for equities.
-pub fn default_fno_lot_size(underlying: &str) -> f64 {
+/// Returns standard NSE default lot size for well-known indices or 1 for equities.
+pub fn default_fno_lot_size(underlying: &str) -> Quantity {
     match underlying.to_ascii_uppercase().as_str() {
-        "NIFTY" => 25.0,
-        "BANKNIFTY" => 15.0,
-        "FINNIFTY" => 25.0,
-        "MIDCPNIFTY" => 50.0,
-        _ => 1.0,
+        "NIFTY" => Quantity::from_u64(25),
+        "BANKNIFTY" => Quantity::from_u64(15),
+        "FINNIFTY" => Quantity::from_u64(25),
+        "MIDCPNIFTY" => Quantity::from_u64(50),
+        _ => Quantity::from_u64(1),
     }
 }

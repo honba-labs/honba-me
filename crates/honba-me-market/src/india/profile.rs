@@ -1,14 +1,14 @@
 //! India market profile and default rules provider.
 
 use chrono::NaiveDate;
-use honba_entities::{Currency, Instrument, InstrumentKind, PositionSide};
+use honba_core::{Currency, Exchange, InstrumentId, Price, Quantity};
 
 use crate::calendar::MarketCalendar;
 use crate::costs::CostSchedule;
-use crate::expiry::{ExpiryRules, LastThursdayExpiry};
+use crate::expiry::{ExpiryRules, InstrumentKind, LastThursdayExpiry};
 use crate::profile::MarketProfile;
 use crate::rules::{InstrumentRules, InstrumentRulesProvider, SymbolGrammar};
-use crate::settlement::{MarginModel, MarginRequirement, SettlementRules, SettlementSchedule};
+use crate::settlement::{MarginModel, MarginRequirement, PositionSide, SettlementRules, SettlementSchedule};
 
 use super::calendar::NseCalendar;
 use super::costs::{CostModel, SttRates};
@@ -18,14 +18,13 @@ use super::costs::{CostModel, SttRates};
 pub struct IndiaInstrumentRulesProvider;
 
 impl InstrumentRulesProvider for IndiaInstrumentRulesProvider {
-    fn rules_for(&self, instrument: &Instrument) -> InstrumentRules {
-        match instrument.kind() {
-            InstrumentKind::Equity => {
-                // Cash equity: lot size 1, tick size 0.05
-                InstrumentRules::new(1.0, 0.05)
-            }
-            _ => InstrumentRules::new(instrument.lot_size(), instrument.tick_size()),
-        }
+    fn rules_for(&self, instrument: &InstrumentId) -> InstrumentRules {
+        let _ = instrument;
+        // Cash equity: lot size 1, tick size 0.05
+        InstrumentRules::new(
+            Quantity::from_u64(1),
+            Price::from_rupees("0.05").unwrap(),
+        )
     }
 }
 
@@ -49,32 +48,30 @@ impl SymbolGrammar for IndiaSymbolGrammar {
         Ok(())
     }
 
-    fn resolve_instrument(&self, raw: &str) -> crate::Result<Instrument> {
+    fn resolve_instrument(&self, raw: &str) -> crate::Result<InstrumentId> {
         let norm = self.normalize(raw);
         let (exchange_code, symbol) = match norm.split_once(':') {
             Some((ex, sym)) => (ex, sym),
             None => ("NSE", norm.as_str()),
         };
-        let exchange = honba_messages::Exchange::new(exchange_code);
+        let exchange: Exchange = exchange_code.parse().map_err(|_| {
+            crate::MarketError::InvalidSymbol {
+                symbol: raw.to_string(),
+                reason: format!("unknown exchange: {exchange_code}"),
+            }
+        })?;
 
         // Try F&O contract parsing first
         if let Ok(contract) = crate::india::fno::parse_fno_symbol(symbol) {
             let lot_size = crate::india::fno::default_fno_lot_size(contract.underlying());
-            let tick_size = 0.05;
-            return Ok(contract.to_instrument(exchange, lot_size, tick_size));
+            let tick_size = Price::from_rupees("0.05").unwrap();
+            return Ok(contract.to_instrument_id(exchange, lot_size, tick_size));
         }
 
         // Validate basic cash equity symbol
         self.validate(symbol)?;
 
-        let id = honba_messages::InstrumentId::new(symbol, exchange);
-        Ok(Instrument::new(
-            id,
-            InstrumentKind::Equity,
-            Currency::Inr,
-            1.0,
-            0.05,
-        ))
+        Ok(InstrumentId::new(exchange, symbol))
     }
 }
 

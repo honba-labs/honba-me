@@ -7,7 +7,7 @@
 
 use std::collections::VecDeque;
 
-use honba_messages::Bar;
+use honba_core::Bar;
 
 use crate::indicator::Indicator;
 
@@ -152,7 +152,11 @@ impl Indicator for Stochastic {
     type Output = StochasticValue;
 
     fn update(&mut self, bar: &Bar) -> Option<StochasticValue> {
-        self.push(bar.high(), bar.low(), bar.close())
+        self.push(
+            bar.high.0.to_string().parse::<f64>().unwrap_or(0.0),
+            bar.low.0.to_string().parse::<f64>().unwrap_or(0.0),
+            bar.close.0.to_string().parse::<f64>().unwrap_or(0.0),
+        )
     }
 
     fn value(&self) -> Option<StochasticValue> {

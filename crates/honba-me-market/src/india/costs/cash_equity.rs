@@ -5,7 +5,7 @@
 //! duty to buys, and GST is charged on brokerage, exchange, SEBI and IPFT charges. Every charge is
 //! returned unrounded; a consumer that books money rounds each leg to minor units once.
 
-use honba_messages::OrderSide;
+use honba_core::OrderSide;
 
 use super::{
     CHARGE_BROKERAGE, CHARGE_EXCHANGE_FEE, CHARGE_GST, CHARGE_IPFT, CHARGE_SEBI_FEE,

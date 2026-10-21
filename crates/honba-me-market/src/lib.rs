@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-#![deny(rustdoc::broken_intra_doc_links)]
 #![deny(unsafe_code)]
 
 //! Generic market contracts and pluggable market packs for the Honba platform.

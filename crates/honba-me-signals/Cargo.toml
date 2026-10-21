@@ -11,9 +11,9 @@ description = "Explainable buy/sell signal detectors and horizon rulesets (ADR 0
 name = "honba_signals"
 
 [dependencies]
-honba-messages.workspace = true
-honba-entities.workspace = true
-honba-indicators.workspace = true
+honba-core.workspace = true
+honba-me-indicators.workspace = true
+serde.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

@@ -10,7 +10,8 @@ use tokio::sync::RwLock;
 
 use honba_core::{Exchange, InstrumentId, Price, Quantity, Tick};
 use honba_me_core::{
-    CoalescingTickBuffer, MarketDataFeed, MdError, ReconnectionManager, Subscription, SymbolMapper,
+    CoalescingTickBuffer, FeedHealth, MarketDataFeed, MdError, ReconnectionManager, Subscription,
+    SymbolMapper,
 };
 
 /// Fyers Data Socket feed adapter.
@@ -106,6 +107,24 @@ impl MarketDataFeed for FyersFeed {
             self.reconnection.remove_subscription(inst).await;
         }
         Ok(())
+    }
+
+    async fn fetch_snapshot(
+        &self,
+        _instruments: &[InstrumentId],
+    ) -> Result<Vec<Tick>, MdError> {
+        Ok(Vec::new())
+    }
+
+    fn feed_health(&self) -> FeedHealth {
+        FeedHealth {
+            name: self.name().to_string(),
+            connected: false,
+            last_heartbeat: None,
+            rtt_ms: None,
+            dropped_count: 0,
+            reconnect_count: 0,
+        }
     }
 }
 

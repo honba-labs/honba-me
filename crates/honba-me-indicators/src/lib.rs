@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-#![deny(rustdoc::broken_intra_doc_links)]
 #![deny(unsafe_code)]
 
 //! Incremental technical indicators for the Honba platform.

@@ -1,7 +1,11 @@
 //! Generic instrument trading rules, price bands, and symbol grammar.
+//!
+//! All prices and quantities use canonical [`honba_core`] types (`Price`, `Quantity`)
+//! with exact [`rust_decimal::Decimal`] arithmetic — no floating point.
 
-use honba_entities::Instrument;
-use honba_messages::InstrumentId;
+use honba_core::{Exchange, InstrumentId, Price, Quantity};
+use rust_decimal::Decimal;
+use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use crate::{MarketError, Result};
@@ -10,20 +14,26 @@ use crate::{MarketError, Result};
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PriceBand {
     /// Lower circuit / floor limit price.
-    pub lower: f64,
+    pub lower: Price,
     /// Upper circuit / ceiling limit price.
-    pub upper: f64,
+    pub upper: Price,
+    /// Reference price (previous close) used for band calculation.
+    pub reference_price: Price,
 }
 
 impl PriceBand {
     /// Creates a new price band.
-    pub fn new(lower: f64, upper: f64) -> Self {
+    pub fn new(lower: Price, upper: Price, reference_price: Price) -> Self {
         debug_assert!(upper >= lower, "upper band must be >= lower band");
-        Self { lower, upper }
+        Self {
+            lower,
+            upper,
+            reference_price,
+        }
     }
 
     /// Checks if a price is within the band.
-    pub fn contains(&self, price: f64) -> bool {
+    pub fn contains(&self, price: Price) -> bool {
         price >= self.lower && price <= self.upper
     }
 }
@@ -34,23 +44,23 @@ pub enum QuantityViolation {
     /// The quantity is below the minimum order quantity.
     BelowMin {
         /// The offending quantity.
-        quantity: f64,
+        quantity: Quantity,
         /// The minimum allowed quantity.
-        min: f64,
+        min: Quantity,
     },
     /// The quantity exceeds the freeze (maximum single order) quantity.
     OverFreeze {
         /// The offending quantity.
-        quantity: f64,
+        quantity: Quantity,
         /// The maximum allowed quantity.
-        max: f64,
+        max: Quantity,
     },
     /// The quantity is not an exact multiple of the lot size.
     NotLotMultiple {
         /// The offending quantity.
-        quantity: f64,
+        quantity: Quantity,
         /// The lot size it must be a multiple of.
-        lot: f64,
+        lot: Quantity,
     },
 }
 
@@ -81,24 +91,20 @@ impl From<QuantityViolation> for MarketError {
     }
 }
 
-/// Ticks of float noise tolerated around a tick boundary; equals `honba-entities`'
-/// `LOT_TICK_TOLERANCE` so `Instrument::is_on_tick` and the rules agree.
-const PRICE_TICK_TOLERANCE: f64 = 1e-6;
-
 /// Why an order price breaks an instrument's rules (ADR 0018 decision 4a).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PriceViolation {
     /// The price is zero, negative or not a number.
     NonPositive {
         /// The offending price.
-        price: f64,
+        price: Price,
     },
     /// The price is not on a multiple of the tick size.
     OffTick {
         /// The offending price.
-        price: f64,
+        price: Price,
         /// The tick size it must be a multiple of.
-        tick: f64,
+        tick: Price,
     },
 }
 
@@ -125,18 +131,18 @@ impl From<PriceViolation> for MarketError {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct InstrumentRules {
     /// Minimum tradable lot size.
-    pub lot_size: f64,
+    pub lot_size: Quantity,
     /// Minimum price increment.
-    pub tick_size: f64,
+    pub tick_size: Price,
     /// Minimum allowed order quantity.
-    pub min_order_quantity: f64,
+    pub min_order_quantity: Quantity,
     /// Maximum allowed single order quantity (freeze / max clip size). None if unlimited.
-    pub max_order_quantity: Option<f64>,
+    pub max_order_quantity: Option<Quantity>,
 }
 
 impl InstrumentRules {
     /// Creates basic instrument rules from lot size and tick size.
-    pub fn new(lot_size: f64, tick_size: f64) -> Self {
+    pub fn new(lot_size: Quantity, tick_size: Price) -> Self {
         Self {
             lot_size,
             tick_size,
@@ -146,7 +152,7 @@ impl InstrumentRules {
     }
 
     /// Sets the maximum single order quantity.
-    pub fn with_max_quantity(mut self, max_quantity: f64) -> Self {
+    pub fn with_max_quantity(mut self, max_quantity: Quantity) -> Self {
         self.max_order_quantity = Some(max_quantity);
         self
     }
@@ -155,7 +161,7 @@ impl InstrumentRules {
     ///
     /// Checks run in order: minimum, freeze quantity, lot multiple; the first
     /// failure is returned with the numbers it needs.
-    pub fn validate_quantity(&self, quantity: f64) -> std::result::Result<(), QuantityViolation> {
+    pub fn validate_quantity(&self, quantity: Quantity) -> std::result::Result<(), QuantityViolation> {
         if quantity < self.min_order_quantity {
             return Err(QuantityViolation::BelowMin {
                 quantity,
@@ -172,8 +178,11 @@ impl InstrumentRules {
             }
         }
 
-        let rem = (quantity / self.lot_size).fract();
-        if rem.abs() > 1e-6 && (1.0 - rem.abs()) > 1e-6 {
+        // Check lot multiple: quantity / lot_size should be an integer
+        let ratio = quantity.0 / self.lot_size.0;
+        let fract = ratio - ratio.trunc();
+        let tolerance = Decimal::from_str("1e-6").unwrap();
+        if fract.abs() > tolerance && (Decimal::ONE - fract.abs()) > tolerance {
             return Err(QuantityViolation::NotLotMultiple {
                 quantity,
                 lot: self.lot_size,
@@ -184,20 +193,17 @@ impl InstrumentRules {
     }
 
     /// Validates whether an order price is positive and on the tick grid.
-    ///
-    /// The tick tolerance (1e-6 ticks) matches `Instrument::is_on_tick` in
-    /// `honba-entities`, so the two agree on every price.
-    pub fn validate_price(&self, price: f64) -> std::result::Result<(), PriceViolation> {
-        if price.is_nan() || price <= 0.0 {
+    pub fn validate_price(&self, price: Price) -> std::result::Result<(), PriceViolation> {
+        if !price.is_positive() {
             return Err(PriceViolation::NonPositive { price });
         }
 
-        let ticks = price / self.tick_size;
-        if !price.is_finite() || (ticks - ticks.round()).abs() >= PRICE_TICK_TOLERANCE {
-            return Err(PriceViolation::OffTick {
-                price,
-                tick: self.tick_size,
-            });
+        let ticks = price.0 / self.tick_size.0;
+        let rounded = ticks.round();
+        let diff = (ticks - rounded).abs();
+        let tolerance = Decimal::from_str("1e-6").unwrap();
+        if diff >= tolerance {
+            return Err(PriceViolation::OffTick { price, tick: self.tick_size });
         }
 
         Ok(())
@@ -207,8 +213,9 @@ impl InstrumentRules {
 /// Generic provider of instrument rules for symbols.
 pub trait InstrumentRulesProvider: Send + Sync {
     /// Returns the trading rules for a given instrument.
-    fn rules_for(&self, instrument: &Instrument) -> InstrumentRules {
-        InstrumentRules::new(instrument.lot_size(), instrument.tick_size())
+    fn rules_for(&self, instrument: &InstrumentId) -> InstrumentRules {
+        let _ = instrument;
+        InstrumentRules::new(Quantity::ZERO, Price::ZERO)
     }
 
     /// Returns the daily price band (circuits) if applicable.
@@ -236,8 +243,8 @@ pub trait SymbolGrammar: Send + Sync {
         }
     }
 
-    /// Resolves a raw symbol into an [`Instrument`] with appropriate metadata, if supported by the grammar.
-    fn resolve_instrument(&self, raw: &str) -> Result<Instrument> {
+    /// Resolves a raw symbol into canonical instrument metadata.
+    fn resolve_instrument(&self, raw: &str) -> Result<InstrumentId> {
         let _ = raw;
         Err(MarketError::InvalidSymbol {
             symbol: raw.to_string(),

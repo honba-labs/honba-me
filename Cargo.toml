@@ -58,20 +58,3 @@ honba-indicators = { package = "honba-me-indicators", path = "crates/honba-me-in
 honba-signals    = { package = "honba-me-signals", path = "crates/honba-me-signals" }
 honba-market     = { package = "honba-me-market", path = "crates/honba-me-market" }
 honba-feed       = { package = "honba-me-feed", path = "crates/honba-me-feed" }
-
-# Cross-repo dependencies
-honba-kokoro-types     = { path = "../honba-kokoro/crates/honba-kokoro-types" }
-honba-kokoro-messages  = { path = "../honba-kokoro/crates/honba-kokoro-messages" }
-honba-kokoro-entities  = { path = "../honba-kokoro/crates/honba-kokoro-entities" }
-honba-kokoro-ports     = { path = "../honba-kokoro/crates/honba-kokoro-ports" }
-honba-messages         = { package = "honba-kokoro-messages", path = "../honba-kokoro/crates/honba-kokoro-messages" }
-honba-entities         = { package = "honba-kokoro-entities", path = "../honba-kokoro/crates/honba-kokoro-entities" }
-honba-ports            = { package = "honba-kokoro-ports", path = "../honba-kokoro/crates/honba-kokoro-ports" }
-
-honba-ya-engine        = { path = "../honba-ya/crates/honba-ya-engine" }
-honba-ya-sim           = { path = "../honba-ya/crates/honba-ya-sim" }
-honba-engine           = { package = "honba-ya-engine", path = "../honba-ya/crates/honba-ya-engine" }
-honba-sim              = { package = "honba-ya-sim", path = "../honba-ya/crates/honba-ya-sim" }
-
-honba-nou-analytics    = { path = "../honba-nou/crates/honba-nou-analytics" }
-honba-analytics        = { package = "honba-nou-analytics", path = "../honba-nou/crates/honba-nou-analytics" }

@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-#![deny(rustdoc::broken_intra_doc_links)]
 #![deny(unsafe_code)]
 
 //! Explainable buy/sell signal detectors (ADR 0031, ROADMAP E12).

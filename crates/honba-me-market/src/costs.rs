@@ -4,7 +4,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use chrono::NaiveDate;
-use honba_messages::OrderSide;
+use honba_core::OrderSide;
 use serde::{Deserialize, Serialize};
 
 use crate::{MarketError, Result};

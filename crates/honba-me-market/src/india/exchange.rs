@@ -8,7 +8,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use honba_messages::{Exchange, InstrumentId};
+use honba_core::{Exchange, InstrumentId};
 use thiserror::Error;
 
 /// An Indian exchange that Honba can load and trade instruments for.
@@ -41,7 +41,7 @@ impl fmt::Display for IndiaExchange {
 
 impl From<IndiaExchange> for Exchange {
     fn from(value: IndiaExchange) -> Self {
-        Exchange::new(value.as_str())
+        value.as_str().parse().unwrap_or(Exchange::Nse)
     }
 }
 
@@ -110,5 +110,5 @@ pub fn resolve_instrument(
         (Some(e), _) | (None, Some(e)) => e,
         (None, None) => IndiaExchange::Nse,
     };
-    Ok(InstrumentId::new(symbol, exchange.into()))
+    Ok(InstrumentId::new(exchange.into(), symbol))
 }

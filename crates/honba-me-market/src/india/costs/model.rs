@@ -1,6 +1,6 @@
 //! Full transaction cost model.
 
-use honba_messages::OrderSide;
+use honba_core::OrderSide;
 
 use super::stt::SttRates;
 

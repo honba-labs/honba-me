@@ -10,10 +10,17 @@
 //! per run or strategy through `settlement_days`.
 
 use chrono::{Duration, NaiveDate};
-use honba_entities::{InstrumentKind, PositionSide};
 use serde::{Deserialize, Serialize};
 
 use crate::calendar::MarketCalendar;
+use crate::expiry::InstrumentKind;
+
+/// Position side for margin calculations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PositionSide {
+    Long,
+    Short,
+}
 
 /// Margin requirements calculated for an order or position.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
