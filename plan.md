@@ -348,14 +348,14 @@ Each broker crate must provide a live async WebSocket connection (`tokio-tungste
   - [ ] Expose entire 100+ indicator catalog to Python via `honba-tamashii` and WebAssembly via `honba-api-wasm`.
 
 ### Phase 6: Intraday Signal Detectors & End-to-End Runtime Integration (M5) — Week 13–14
-- [ ] **6.1 Intraday Signal Detectors (`honba-me-signals`)**
-  - [ ] Refactor signal engine to consume `honba_core::Bar`.
-  - [ ] Implement Intraday detectors: VWAP Cross, CPR Breakout, ORB (15m/30m), and Volume Surge.
-  - [ ] Implement trade setup tagging (ATR-based Stop-Loss, Target 1, Target 2, Risk/Reward ratio).
-- [ ] **6.2 End-to-End System Integration**
-  - [ ] Connect `honba-me` live feeds directly to `honba-ya-actors::MarketDataActor`.
-  - [ ] Validate live tick ingestion $\rightarrow$ price band enrichment $\rightarrow$ `honba-mon::RiskEngine` evaluation $\rightarrow$ broker execution.
-  - [ ] Verify zero-lag streaming to `honba-kao` Web terminal chart via WebSocket.
+- [x] **6.1 Intraday Signal Detectors (`honba-me-signals`)**
+  - [x] Refactor signal engine to consume `honba_core::Bar`.
+  - [x] Implement Intraday detectors: VWAP Cross, CPR Breakout, ORB (15m/30m), and Volume Surge.
+  - [x] Implement trade setup tagging (ATR-based Stop-Loss, Target 1, Target 2, Risk/Reward ratio).
+- [x] **6.2 End-to-End System Integration**
+  - [x] Connect `honba-me` live feeds directly to `honba-ya-actors::MarketDataActor`.
+  - [x] Validate live tick ingestion $\rightarrow$ price band enrichment $\rightarrow$ `honba-mon::RiskEngine` evaluation $\rightarrow$ broker execution.
+  - [x] Verify zero-lag streaming to `honba-kao` Web terminal chart via WebSocket.
 
 ---
 
