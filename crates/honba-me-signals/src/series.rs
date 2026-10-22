@@ -4,7 +4,7 @@
 //! indicator has primed, so a detector naturally cannot fire before its inputs are warm. Built
 //! with the incremental indicators in `honba-indicators`, so the computation is causal.
 
-use honba_indicators::{Ema, Indicator, Macd, MacdValue, Rsi, Sma};
+use honba_indicators::{Adx, Cpr, Ema, Indicator, Macd, MacdValue, Obv, Rsi, Sma, Supertrend, Vwap, Atr};
 use honba_core::Bar;
 
 use crate::catalog::Params;
@@ -33,6 +33,16 @@ pub(crate) struct Series {
     pub macd: Vec<Option<MacdValue>>,
     /// Simple moving average of volume.
     pub vol_sma: Vec<Option<f64>>,
+    /// VWAP of close.
+    pub vwap: Vec<Option<f64>>,
+    /// CPR Pivot value.
+    pub cpr_pivot: Vec<Option<f64>>,
+    /// CPR Bottom Central Pivot.
+    pub cpr_bc: Vec<Option<f64>>,
+    /// CPR Top Central Pivot.
+    pub cpr_tc: Vec<Option<f64>>,
+    /// ATR (Average True Range).
+    pub atr: Vec<Option<f64>>,
 }
 
 impl Series {
@@ -50,12 +60,20 @@ impl Series {
         let mut rsi = Vec::with_capacity(n);
         let mut macd = Vec::with_capacity(n);
         let mut vol_sma = Vec::with_capacity(n);
+        let mut vwap = Vec::with_capacity(n);
+        let mut cpr_pivot = Vec::with_capacity(n);
+        let mut cpr_bc = Vec::with_capacity(n);
+        let mut cpr_tc = Vec::with_capacity(n);
+        let mut atr = Vec::with_capacity(n);
 
         let mut ema_fast_ind = Ema::new(params.ema_fast);
         let mut ema_slow_ind = Ema::new(params.ema_slow);
         let mut rsi_ind = Rsi::new(params.rsi_period);
         let mut macd_ind = Macd::new(params.macd_fast, params.macd_slow, params.macd_signal);
         let mut vol_sma_ind = Sma::new(params.vol_window);
+        let mut vwap_ind = Vwap::new();
+        let mut cpr_ind = Cpr::new();
+        let mut atr_ind = Atr::new(params.rsi_period);
 
         for bar in bars {
             let c = bar.close.0.to_string().parse::<f64>().unwrap_or(0.0);
@@ -70,6 +88,11 @@ impl Series {
             rsi.push(rsi_ind.update(c));
             macd.push(macd_ind.update(c));
             vol_sma.push(vol_sma_ind.update(volume.last().copied().unwrap_or(0.0)));
+            vwap.push(vwap_ind.update(bar));
+            cpr_pivot.push(cpr_ind.update(bar));
+            cpr_bc.push(cpr_ind.bc());
+            cpr_tc.push(cpr_ind.tc());
+            atr.push(atr_ind.update(bar));
         }
 
         Self {
@@ -84,6 +107,11 @@ impl Series {
             rsi,
             macd,
             vol_sma,
+            vwap,
+            cpr_pivot,
+            cpr_bc,
+            cpr_tc,
+            atr,
         }
     }
 

@@ -197,6 +197,66 @@ pub const REASON_CODES: &[ReasonCode] = &[
         weight: 0.4,
         label: "Close at a 52-week low",
     },
+    // --- VWAP Cross ---
+    ReasonCode {
+        code: "vwap_cross_up",
+        group: ReasonGroup::PriceAction,
+        polarity: ReasonPolarity::Bullish,
+        weight: 0.35,
+        label: "Price crossed above session VWAP",
+    },
+    ReasonCode {
+        code: "vwap_cross_down",
+        group: ReasonGroup::PriceAction,
+        polarity: ReasonPolarity::Bearish,
+        weight: 0.35,
+        label: "Price crossed below session VWAP",
+    },
+    // --- CPR Breakout ---
+    ReasonCode {
+        code: "cpr_breakout_up",
+        group: ReasonGroup::Level,
+        polarity: ReasonPolarity::Bullish,
+        weight: 0.4,
+        label: "Price broke above CPR top (TC)",
+    },
+    ReasonCode {
+        code: "cpr_breakdown_down",
+        group: ReasonGroup::Level,
+        polarity: ReasonPolarity::Bearish,
+        weight: 0.4,
+        label: "Price broke below CPR bottom (BC)",
+    },
+    // --- ORB Breakout ---
+    ReasonCode {
+        code: "orb_breakout_up",
+        group: ReasonGroup::Level,
+        polarity: ReasonPolarity::Bullish,
+        weight: 0.4,
+        label: "Price broke above opening range high",
+    },
+    ReasonCode {
+        code: "orb_breakdown_down",
+        group: ReasonGroup::Level,
+        polarity: ReasonPolarity::Bearish,
+        weight: 0.4,
+        label: "Price broke below opening range low",
+    },
+    // --- Volume Surge ---
+    ReasonCode {
+        code: "volume_surge_up",
+        group: ReasonGroup::Volume,
+        polarity: ReasonPolarity::Bullish,
+        weight: 0.3,
+        label: "Volume surge on up move",
+    },
+    ReasonCode {
+        code: "volume_surge_down",
+        group: ReasonGroup::Volume,
+        polarity: ReasonPolarity::Bearish,
+        weight: 0.3,
+        label: "Volume surge on down move",
+    },
 ];
 
 /// Looks up a reason code by its wire string.
@@ -256,6 +316,22 @@ pub const DETECTORS: &[DetectorSpec] = &[
             "break_52w_high",
             "break_52w_low",
         ],
+    },
+    DetectorSpec {
+        name: "vwap_cross",
+        codes: &["vwap_cross_up", "vwap_cross_down"],
+    },
+    DetectorSpec {
+        name: "cpr_breakout",
+        codes: &["cpr_breakout_up", "cpr_breakdown_down"],
+    },
+    DetectorSpec {
+        name: "orb_breakout",
+        codes: &["orb_breakout_up", "orb_breakdown_down"],
+    },
+    DetectorSpec {
+        name: "volume_surge",
+        codes: &["volume_surge_up", "volume_surge_down"],
     },
 ];
 
@@ -356,6 +432,8 @@ pub struct Params {
     pub pivot_span: usize,
     /// Bars in the rolling high/low a 52-week break is measured against.
     pub range_52w: usize,
+    /// Number of bars defining the opening range for ORB detector.
+    pub orb_minutes: usize,
 }
 
 impl Params {
@@ -376,6 +454,7 @@ impl Params {
                 breakout_window: 20,
                 pivot_span: 2,
                 range_52w: 252,
+                orb_minutes: 15,
             },
             SignalHorizon::Swing => Self {
                 ema_fast: 20,
@@ -391,6 +470,7 @@ impl Params {
                 breakout_window: 55,
                 pivot_span: 2,
                 range_52w: 252,
+                orb_minutes: 30,
             },
             SignalHorizon::Positional => Self {
                 ema_fast: 50,
@@ -406,6 +486,7 @@ impl Params {
                 breakout_window: 200,
                 pivot_span: 2,
                 range_52w: 252,
+                orb_minutes: 60,
             },
         }
     }

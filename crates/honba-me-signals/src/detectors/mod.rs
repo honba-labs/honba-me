@@ -5,6 +5,9 @@ pub(crate) mod momentum;
 pub(crate) mod price_action;
 pub(crate) mod trend;
 pub(crate) mod volume;
+pub(crate) mod vwap_cross;
+pub(crate) mod cpr_breakout;
+pub(crate) mod orb;
 
 use crate::catalog::Params;
 use crate::detector::Detector;
@@ -35,6 +38,11 @@ pub(crate) fn instances(params: &Params) -> Vec<Box<dyn Detector>> {
         }),
         Box::new(levels::Levels {
             range_52w: params.range_52w,
+        }),
+        Box::new(vwap_cross::VwapCross),
+        Box::new(cpr_breakout::CprBreakout),
+        Box::new(orb::OrbBreakout {
+            orb_minutes: params.orb_minutes,
         }),
     ]
 }
