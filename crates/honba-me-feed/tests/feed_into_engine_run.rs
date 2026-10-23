@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use honba_core::{Exchange, InstrumentId};
-use honba_feed::ports::{ConnectorState, MarketDataConnector, MarketEvent, PortError, PortResult, SubscriptionParams};
+use honba_feed::ports::{ConnectorState, MarketDataConnector, MarketEvent, PortError, PortResult, Subscription, SubscriptionParams};
 use honba_feed::wire::{BarAggregation, BarSpecification, PriceType, UnixNanos, Bar, BarType};
 
 /// A clock the test moves by hand, so no assertion depends on wall time.
@@ -94,12 +94,12 @@ impl ScriptedConnector {
 
 #[async_trait]
 impl MarketDataConnector for ScriptedConnector {
-    async fn subscribe(&mut self, _params: SubscriptionParams) -> PortResult<()> {
+    async fn subscribe(&mut self, _params: SubscriptionParams) -> PortResult<Subscription> {
         if let Some(err) = &self.stopped {
             return Err(err.clone());
         }
         self.state = ConnectorState::Connected;
-        Ok(())
+        Ok(Subscription::default())
     }
 
     async fn next_event(&mut self) -> PortResult<Option<MarketEvent>> {

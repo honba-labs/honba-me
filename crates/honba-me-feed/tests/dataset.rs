@@ -11,7 +11,8 @@ use parquet::arrow::ArrowWriter;
 
 use honba_core::{Exchange, InstrumentId};
 use honba_feed::import::parquet_source::{ParquetBarSource, bar_schema};
-use honba_feed::{Dataset, DatasetFeed};
+use honba_feed::dataset::{DataFeed, Dataset, DatasetFeed};
+use honba_feed::ports::MarketEvent;
 use honba_feed::wire::{BarAggregation, BarSpecification, PriceType, UnixNanos};
 use honba_feed::wire::BarType;
 
@@ -84,9 +85,12 @@ fn default_spec() -> BarSpecification {
 fn replayed_bars(feed: &mut DatasetFeed) -> Vec<(String, u64)> {
     let mut replayed = Vec::new();
     while let Some(message) = feed.next().expect("the feed does not fail") {
-        let bar = message.bar().expect("the feed replays bars");
+        let bar = match message.into_event() {
+            MarketEvent::Bar(b) => b,
+            _ => panic!("the feed replays bars"),
+        };
         replayed.push((
-            bar.bar_type().instrument_id().symbol().to_string(),
+            bar.bar_type().instrument_id().symbol.to_string(),
             bar.ts_event().as_u64(),
         ));
     }
