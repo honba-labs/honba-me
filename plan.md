@@ -284,43 +284,13 @@ Each broker crate must provide a live async WebSocket connection (`tokio-tungste
 > **Porting StockSharp.Algo.Indicators (100+ Indicators) from C# to High-Performance Pure Rust**:
 > Zero-allocation, exact decimal and SIMD-accelerated calculations with dual streaming and batch Arrow APIs.
 
-- [ ] **5.1 Trend & Moving Averages (Ported from StockSharp.Algo.Indicators)**
-  - [ ] SMA (Simple), EMA (Exponential), WMA (Weighted), HMA (Hull Moving Average).
-  - [ ] DEMA (Double Exponential), TEMA (Triple Exponential), KAMA (Kaufman Adaptive Moving Average).
-  - [ ] ZLEMA (Zero-Lag Exponential), VWMA (Volume-Weighted MA), ALMA (Arnaud Legoux MA).
-  - [ ] FRAMA (Fractal Adaptive MA), T3 (Tillson T3 Moving Average), McGinley Dynamic.
-  - [ ] Supertrend (Dynamic ATR trailing stop bands), Parabolic SAR (PSAR), Ichimoku Kinko Hyo (Cloud, Tenkan, Kijun, Senkou A/B, Chikou).
-- [ ] **5.2 Momentum & Oscillators (Ported from StockSharp.Algo.Indicators)**
-  - [ ] RSI (Wilder Relative Strength Index), Stochastic (%K, %D, Slow/Fast), Stochastic RSI.
-  - [ ] MACD (Moving Average Convergence Divergence: MACD, Signal, Histogram).
-  - [ ] ROC (Rate of Change), Momentum, CCI (Commodity Channel Index), Williams %R.
-  - [ ] Ultimate Oscillator, Awesome Oscillator (AO), Accelerator Oscillator (AC).
-  - [ ] CMO (Chande Momentum Oscillator), DPO (Detrended Price Oscillator), Fisher Transform.
-  - [ ] QQE (Quantitative Qualitative Estimation), TSI (True Strength Index).
-- [ ] **5.3 Volatility, Range & Channels (Ported from StockSharp.Algo.Indicators)**
-  - [ ] ATR (Average True Range: Wilder and SMA smoothing), True Range (TR).
-  - [ ] Bollinger Bands (Middle, Upper, Lower, %B, Bandwidth).
-  - [ ] Keltner Channel, Donchian Channel (Highest High, Lowest Low, Midpoint).
-  - [ ] Standard Deviation, Historical Volatility (Parkinson, Garman-Klass, Yang-Zhang).
-  - [ ] Chaikin Volatility, Mass Index, Relative Volatility Index (RVI), Ulcer Index.
-- [ ] **5.4 Volume & Profile Indicators (Ported from StockSharp.Algo.Indicators)**
-  - [ ] OBV (On-Balance Volume), Volume Oscillator, Volume Rate of Change (VROC).
-  - [ ] VWAP (Volume-Weighted Average Price: Intraday session, weekly, monthly anchor) with $\pm 1\sigma, \pm 2\sigma, \pm 3\sigma$ bands.
-  - [ ] A/D (Accumulation/Distribution line), CMF (Chaikin Money Flow), MFI (Money Flow Index).
-  - [ ] Volume Profile (POC, VAH, VAL) and Market Profile TPO (Time Price Opportunity).
-- [ ] **5.5 Order Book & L2/L3 Microstructure Indicators (Ported from StockSharp)**
-  - [ ] Order Book Imbalance (ratio of top-N bid vs ask volume).
-  - [ ] Bid/Ask Depth Ratio, Weighted Mid-Price, Micro-Price.
-  - [ ] Spread (Absolute and BPS), Trade Intensity (ticks per second, volume per second).
-  - [ ] Liquidity Index and Depth Slope.
-- [ ] **5.6 Candlestick Pattern Recognition & Statistics (Ported from StockSharp)**
-  - [ ] Single Candlestick Patterns: Doji, Dragonfly/Gravestone Doji, Hammer, Hanging Man, Inverted Hammer, Shooting Star, Marubozu.
-  - [ ] Multi-Candlestick Patterns: Bullish/Bearish Engulfing, Harami, Piercing Line, Dark Cloud Cover, Morning/Evening Star, Three White Soldiers, Three Black Crows.
-  - [ ] Mathematical & Statistical: Linear Regression (Slope, Intercept, Angle, R-squared), Pearson Correlation, Covariance, Standard Error, Median, Variance.
-- [ ] **5.7 Dual-Mode Streaming API & Vectorized Arrow Compute**
-  - [ ] Streaming API: `indicator.update(bar)` / `indicator.update_tick(tick)` for sub-microsecond actor loops.
-  - [ ] Vectorized Arrow 53 batch compute over Parquet historical datasets for instant backtests.
-  - [ ] Expose entire 100+ indicator catalog to Python via `honba-tamashii` and WebAssembly via `honba-api-wasm`.
+- [x] **5.1 Trend & Moving Averages (Ported from StockSharp.Algo.Indicators)**
+- [x] **5.2 Momentum & Oscillators (Ported from StockSharp.Algo.Indicators)**
+- [x] **5.3 Volatility, Range & Channels (Ported from StockSharp.Algo.Indicators)**
+- [x] **5.4 Volume & Profile Indicators (Ported from StockSharp.Algo.Indicators)**
+- [x] **5.5 Order Book & L2/L3 Microstructure Indicators (Ported from StockSharp)**
+- [x] **5.6 Candlestick Pattern Recognition & Statistics (Ported from StockSharp)**
+- [x] **5.7 Dual-Mode Streaming API & Vectorized Arrow Compute**
 
 ### Phase 6: Intraday Signal Detectors & End-to-End Runtime Integration (M5) — Week 13–14
 - [x] **6.1 Intraday Signal Detectors (`honba-me-signals`)**
