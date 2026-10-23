@@ -245,19 +245,31 @@ impl MarketDataFeed for ZerodhaFeed {
         tokio::spawn(async move {
             while let Some(msg) = msg_rx.recv().await {
                 if msg.is_binary {
-                    // Zerodha binary packets need parsing based on length/type
-                    // For now, assume a simple dispatch to LTP or Quote based on length
-                    // In a real implementation, we need frame unwrapping and full protocol handling
-                    let tick = match msg.payload.len() {
-                        8 => Self::parse_binary_ltp(&msg.payload, &mapper.read().await),
-                        28 => Self::parse_binary_quote(&msg.payload, &mapper.read().await),
-                        44 => Self::parse_binary_quote_44b(&msg.payload, &mapper.read().await),
-                        184 => Self::parse_binary_depth_184b(&msg.payload, &mapper.read().await),
-                        _ => continue, // Unknown packet size
+                    // Zerodha packets might be compressed; check if first byte indicates it
+                    let data = if msg.payload.first() == Some(&0x78) { // zlib header
+                        match Self::decompress_zlib(&msg.payload) {
+                            Ok(d) => d,
+                            Err(_) => continue,
+                        }
+                    } else {
+                        msg.payload.clone()
                     };
-                    
-                    if let Ok(tick) = tick {
-                        let _ = buf_tx.send(tick).await;
+
+                    let frames = Self::unwrap_frames(&data);
+                    let mapper = mapper.read().await;
+
+                    for frame in frames {
+                        let tick = match frame.len() {
+                            8 => Self::parse_binary_ltp(frame, &mapper),
+                            28 => Self::parse_binary_quote(frame, &mapper),
+                            44 => Self::parse_binary_quote_44b(frame, &mapper),
+                            184 => Self::parse_binary_depth_184b(frame, &mapper),
+                            _ => continue, // Unknown packet size
+                        };
+                        
+                        if let Ok(tick) = tick {
+                            let _ = buf_tx.send(tick).await;
+                        }
                     }
                 }
             }

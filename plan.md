@@ -262,14 +262,16 @@ Each broker crate must provide a live async WebSocket connection (`tokio-tungste
 
 ### Phase 2: Production WebSocket Clients & Multi-Broker Binary Decoders (M1) — Week 3–5
 - [x] **2.1 Shared WebSocket Transport (`honba-me-core`)**
-- [ ] **2.2 Zerodha Kite Ticker (`honba-me-zerodha`)**
-- [ ] **2.3 Upstox v2 Feed (`honba-me-upstox`)**
+- [x] **2.2 Zerodha Kite Ticker (`honba-me-zerodha`)**
+- [x] **2.3 Upstox v2 Feed (`honba-me-upstox`)**
 - [ ] **2.4 Fyers v3 Data Socket (`honba-me-fyers`)**
 - [ ] **2.5 Angel One SmartAPI 2.0 (`honba-me-angelone`) [NEW]**
+- [x] **2.6 Dhan Feed (`honba-me-dhan`) [NEW]**
 
 ### Phase 3: Instrument Master & Corporate Actions Engine (M2) — Week 6–7
-- [ ] **3.1 Instrument Master Ingestion (`honba-me-normalizer`)**
-- [ ] **3.2 Corporate Actions Engine (`honba-me-normalizer`)**
+### Phase 3: Instrument Master & Corporate Actions Engine (M2) — Week 6–7
+- [x] **3.1 Instrument Master Ingestion (`honba-me-normalizer`)**
+- [x] **3.2 Corporate Actions Engine (`honba-me-normalizer`)**
 
 ### Phase 4: Parquet Lakehouse v2, Bhavcopy & Live Tick Recorder (M3) — Week 8–10
 - [x] **4.1 Parquet Lakehouse v2 (`honba-me-feed`)**
