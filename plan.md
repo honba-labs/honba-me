@@ -275,19 +275,8 @@ Each broker crate must provide a live async WebSocket connection (`tokio-tungste
 
 ### Phase 4: Parquet Lakehouse v2, Bhavcopy & Live Tick Recorder (M3) — Week 8–10
 - [x] **4.1 Parquet Lakehouse v2 (`honba-me-feed`)**
-  - [x] Redesign Parquet schema using Arrow 53 with `Decimal128(18, 4)` precision (`lakehouse::{tick_schema_v2, bar_schema_v2}`; timestamps are `Timestamp(ns, UTC)`; depth ladder and price band stored as JSON columns).
-  - [x] Implement Hive-partitioned file structure: `ticks/exchange=NSE/date=YYYY-MM-DD/SYMBOL.parquet` and `bars/timeframe=1m/exchange=NSE/year=YYYY/month=MM/SYMBOL.parquet`. `date`/`year`/`month` are **IST** calendar values. Writes are append-safe (`SYMBOL.part-NNNN.parquet`, temp-file + atomic rename) and Zstd (default) / Snappy / none.
-  - [x] Canonical read path: `Lakehouse` implements `honba_core::{TickReader, BarReader}` and returns `honba_core::Tick` / `Bar`.
-  - [x] Legacy bridge (`honba_feed::canonical`): `ParquetTickStore::canonical_ticks()`, `bars_to_canonical()`, `migrate_tick_store()` convert the legacy `f64` wire types to exact decimals and migrate old stores into the lakehouse.
-  - [ ] *Follow-up:* `ParquetTickStore` / `DatasetReader` still **return** the legacy `f64` `wire` types through their async ports (the engine-facing `DatasetFeed` depends on them); callers get canonical types via the bridge or by reading the `Lakehouse` directly. Retiring the legacy return types is tracked with the engine-port migration, not Phase 4.
 - [x] **4.2 Data Loaders Crate (`honba-me-loaders`) [NEW]**
-  - [x] Scaffold `honba-me-loaders` crate.
-  - [x] Implement daily NSE Bhavcopy downloader: header-driven `sec_bhavdata_full_DDMMYYYY.csv` parser (OHLC, prev close, VWAP, trades, delivery qty/%) and `MTO_DDMMYYYY.DAT` delivery-report parser + merge; exact decimals, bars stamped at the 15:30 IST close, holidays surface as `NotFound`.
-  - [x] Implement broker REST historical bar loaders: Kite (`X-Kite-Version`, `api_key:access_token` auth) and Upstox v2 (`to`-before-`from` URL order, `|` key encoding), both behind `HistoricalBarSource`; a strict `parse_candles` decoder (loud failure on malformed candles).
-  - [x] Historical gap reconciliation: `missing_trading_days`, `missing_intraday_bars` (09:15–15:30 IST session model) and `reconcile_daily` / `reconcile_intraday`, which backfill **only** missing slots from the broker and are idempotent.
-  - [x] Implement DuckDB query views over Parquet directories: `DuckDbViews` generates `ticks` / `bars` views (`read_parquet(... hive_partitioning = true)`), verified against DuckDB 1.5 (exact `DECIMAL(18,4)`, `TIMESTAMPTZ`, partition pruning). The views are zero-copy SQL; the DuckDB C++ engine is intentionally **not** linked into the Rust build.
 - [x] **4.3 Live Tick Recorder Daemon (`honba-me-feed`)**
-  - [x] Implement `TickRecorder` actor with rolling memory buffers (flush at 100 000 ticks or every 60 s, plus on shutdown) and Zstd/Snappy compressed Parquet flushing on the blocking pool. Failed flushes retain and retry the batch with a bounded buffer (oldest dropped and counted); `attach_broadcast` subscribes it to a broadcast feed.
 
 > **Phase 4 verification:** `cargo test -p honba-me-feed -p honba-me-loaders` — lakehouse round-trips of every `Tick` kind, partition layout/IST-date boundaries, append + merged reads, scale rounding and overflow rejection, recorder size/interval/shutdown/failure paths, legacy migration, Bhavcopy/MTO/candle parsers, gap detection and idempotent backfill.
 
