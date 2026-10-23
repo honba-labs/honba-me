@@ -1,6 +1,6 @@
 //! Tests for the scoring engine: confluence, gates, causality.
 
-use honba_entities::{SignalDirection, SignalHorizon};
+use honba_core::signal::{SignalDirection, SignalHorizon};
 
 use crate::catalog::{self, Params, Ruleset};
 use crate::engine::{compute, signals_for_horizon};

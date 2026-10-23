@@ -5,16 +5,16 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use arrow::array::{ArrayRef, Float64Array, Int64Array};
-use arrow::datatypes::{DataType, Field, Schema};
+use arrow::datatypes::Schema;
 use arrow::record_batch::RecordBatch;
 use parquet::arrow::ArrowWriter;
 
 use honba_core::{Exchange, InstrumentId};
-use honba_feed::import::parquet_source::{ParquetBarSource, bar_schema};
 use honba_feed::dataset::{DataFeed, Dataset, DatasetFeed};
+use honba_feed::import::parquet_source::{ParquetBarSource, bar_schema};
 use honba_feed::ports::MarketEvent;
-use honba_feed::wire::{BarAggregation, BarSpecification, PriceType, UnixNanos};
 use honba_feed::wire::BarType;
+use honba_feed::wire::{BarAggregation, BarSpecification, PriceType, UnixNanos};
 
 struct TempFileGuard {
     path: PathBuf,

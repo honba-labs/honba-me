@@ -22,6 +22,7 @@ pub struct OrbBreakout {
 
 impl OrbBreakout {
     /// Creates a new ORB detector with the given opening range length in bars.
+    #[allow(dead_code)]
     pub fn new(orb_minutes: usize) -> Self {
         Self { orb_minutes }
     }

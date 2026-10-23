@@ -3,10 +3,10 @@
 //! All prices and quantities use canonical [`honba_core`] types (`Price`, `Quantity`)
 //! with exact [`rust_decimal::Decimal`] arithmetic — no floating point.
 
-use honba_core::{Exchange, InstrumentId, Price, Quantity};
+use honba_core::{InstrumentId, Price, Quantity};
 use rust_decimal::Decimal;
-use std::str::FromStr;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 use crate::{MarketError, Result};
 
@@ -161,7 +161,10 @@ impl InstrumentRules {
     ///
     /// Checks run in order: minimum, freeze quantity, lot multiple; the first
     /// failure is returned with the numbers it needs.
-    pub fn validate_quantity(&self, quantity: Quantity) -> std::result::Result<(), QuantityViolation> {
+    pub fn validate_quantity(
+        &self,
+        quantity: Quantity,
+    ) -> std::result::Result<(), QuantityViolation> {
         if quantity < self.min_order_quantity {
             return Err(QuantityViolation::BelowMin {
                 quantity,
@@ -203,7 +206,10 @@ impl InstrumentRules {
         let diff = (ticks - rounded).abs();
         let tolerance = Decimal::from_str("1e-6").unwrap();
         if diff >= tolerance {
-            return Err(PriceViolation::OffTick { price, tick: self.tick_size });
+            return Err(PriceViolation::OffTick {
+                price,
+                tick: self.tick_size,
+            });
         }
 
         Ok(())

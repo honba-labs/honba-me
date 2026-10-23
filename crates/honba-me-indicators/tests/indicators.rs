@@ -1,6 +1,20 @@
 //! Behavioural tests for every indicator.
 
+use honba_core::{Bar, Exchange, InstrumentId, Price, Quantity};
 use honba_indicators::{Atr, BollingerBands, BollingerValue, Ema, Indicator, Macd, Rsi, Sma};
+use rust_decimal::Decimal;
+
+fn bar(high: f64, low: f64, close: f64) -> Bar {
+    Bar {
+        instrument: InstrumentId::new(Exchange::Nse, "X"),
+        open: Price::new(Decimal::from_f64_retain(close).unwrap_or_default()),
+        high: Price::new(Decimal::from_f64_retain(high).unwrap_or_default()),
+        low: Price::new(Decimal::from_f64_retain(low).unwrap_or_default()),
+        close: Price::new(Decimal::from_f64_retain(close).unwrap_or_default()),
+        volume: Quantity::from_u64(1),
+        timestamp: chrono::Utc::now(),
+    }
+}
 
 // --- SMA ---
 

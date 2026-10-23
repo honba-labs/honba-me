@@ -12,11 +12,9 @@ pub use downloader::MasterDownloader;
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
-use std::str::FromStr;
 
 use chrono::NaiveDate;
 use honba_core::{Exchange, InstrumentId, Price, Quantity};
-use honba_me_core::SymbolMapper;
 use rust_decimal::Decimal;
 use serde::Deserialize;
 use thiserror::Error;
@@ -130,8 +128,7 @@ impl InstrumentMaster {
 
         self.token_index
             .insert(entry.token.clone().unwrap_or_default(), id.clone());
-        self.symbol_index
-            .insert(entry.symbol.clone(), id.clone());
+        self.symbol_index.insert(entry.symbol.clone(), id.clone());
         if let Some(isin) = &entry.isin {
             self.isin_index.insert(isin.clone(), id.clone());
         }
@@ -157,10 +154,7 @@ impl InstrumentMaster {
             let lot_size_str = record.get(8).unwrap_or("1");
 
             let exchange: Exchange = exchange_str.parse().unwrap_or(Exchange::Nse);
-            let tick_size: Option<Price> = tick_size_str
-                .parse::<Decimal>()
-                .ok()
-                .map(Price::new);
+            let tick_size: Option<Price> = tick_size_str.parse::<Decimal>().ok().map(Price::new);
             let lot_size: Option<u32> = lot_size_str.parse::<u32>().ok();
 
             if symbol.is_empty() {
@@ -170,9 +164,17 @@ impl InstrumentMaster {
             let entry = InstrumentMasterEntry {
                 exchange,
                 symbol: symbol.clone(),
-                token: if token.is_empty() { None } else { Some(token.clone()) },
+                token: if token.is_empty() {
+                    None
+                } else {
+                    Some(token.clone())
+                },
                 isin: None,
-                instrument_type: if instrument_type.is_empty() { None } else { Some(instrument_type.clone()) },
+                instrument_type: if instrument_type.is_empty() {
+                    None
+                } else {
+                    Some(instrument_type.clone())
+                },
                 lot_size,
                 tick_size,
                 freeze_qty: None,
@@ -195,11 +197,7 @@ impl InstrumentMaster {
         let mut count = 0;
         for record in records {
             let exchange: Exchange = record.exchange.parse().unwrap_or(Exchange::Nse);
-            let tick_size: Option<Price> = record
-                .tick_size
-                .parse::<Decimal>()
-                .ok()
-                .map(Price::new);
+            let tick_size: Option<Price> = record.tick_size.parse::<Decimal>().ok().map(Price::new);
             let lot_size: Option<u32> = record.lot_size.parse::<u32>().ok();
 
             if record.trading_symbol.is_empty() {
@@ -264,7 +262,11 @@ impl InstrumentMaster {
                 exchange,
                 symbol: symbol.clone(),
                 token: None,
-                isin: if isin.is_empty() { None } else { Some(isin.clone()) },
+                isin: if isin.is_empty() {
+                    None
+                } else {
+                    Some(isin.clone())
+                },
                 instrument_type: if series == "EQ" {
                     Some("EQ".to_string())
                 } else {
@@ -296,6 +298,7 @@ impl InstrumentMaster {
 }
 
 /// Upstox instrument record from complete.json.gz.
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct UpstoxInstrument {
     instrument_token: String,

@@ -6,30 +6,44 @@ mod engine;
 mod levels;
 mod price_action;
 
-use honba_messages::{
-    Bar, BarAggregation, BarSpecification, BarType, Exchange, InstrumentId, PriceType, UnixNanos,
-};
+use honba_core::{Bar, Exchange, InstrumentId, Price, Quantity};
+use rust_decimal::prelude::*;
+use chrono::{DateTime, Utc, TimeZone, Duration};
 
 /// A placeholder instrument for tests where the instrument does not matter.
 pub(crate) fn instrument() -> InstrumentId {
-    InstrumentId::new("X", Exchange::new("NSE"))
+    InstrumentId::new(Exchange::Nse, "X")
 }
 
-fn spec() -> BarSpecification {
-    BarSpecification::new(1, BarAggregation::Minute, PriceType::Last)
+/// Helper to convert f64 to Price
+pub(crate) fn price(f: f64) -> Price {
+    Price::new(Decimal::from_f64(f).unwrap())
+}
+
+/// Helper to convert f64 to Quantity
+pub(crate) fn quantity(f: f64) -> Quantity {
+    Quantity::new(Decimal::from_f64(f).unwrap())
 }
 
 /// Bars with `open == high == low == close`, at one-minute steps.
 pub(crate) fn bars(closes: &[f64], volumes: &[f64]) -> Vec<Bar> {
     let id = instrument();
-    let spec = spec();
+    let start_ts = Utc.with_ymd_and_hms(2025, 1, 1, 9, 15, 0).unwrap();
     closes
         .iter()
         .zip(volumes)
         .enumerate()
         .map(|(i, (&c, &v))| {
-            let ts = UnixNanos::from_u64((i as u64 + 1) * 60_000_000_000);
-            Bar::new(BarType::new(id.clone(), spec), c, c, c, c, v, ts, ts)
+            let ts = start_ts + Duration::minutes(i as i64);
+            Bar {
+                instrument: id.clone(),
+                open: price(c),
+                high: price(c),
+                low: price(c),
+                close: price(c),
+                volume: quantity(v),
+                timestamp: ts,
+            }
         })
         .collect()
 }

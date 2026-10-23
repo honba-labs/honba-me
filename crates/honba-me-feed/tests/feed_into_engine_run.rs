@@ -1,17 +1,20 @@
 //! Integration test: the E1-S6 feed connector contract.
 //!
-//! This test proves the connector state machine on its own (reconnect, backoff, 
-//! gap markers, terminal stops). 
+//! This test proves the connector state machine on its own (reconnect, backoff,
+//! gap markers, terminal stops).
 
 use std::collections::VecDeque;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc};
 use std::time::Duration;
 
 use async_trait::async_trait;
 use honba_core::{Exchange, InstrumentId};
-use honba_feed::ports::{ConnectorState, MarketDataConnector, MarketEvent, PortError, PortResult, Subscription, SubscriptionParams};
-use honba_feed::wire::{BarAggregation, BarSpecification, PriceType, UnixNanos, Bar, BarType};
+use honba_feed::ports::{
+    ConnectorState, MarketDataConnector, MarketEvent, PortError, PortResult, Subscription,
+    SubscriptionParams,
+};
+use honba_feed::wire::{Bar, BarAggregation, BarSpecification, BarType, PriceType, UnixNanos};
 
 /// A clock the test moves by hand, so no assertion depends on wall time.
 struct FakeClock {
@@ -98,6 +101,7 @@ impl MarketDataConnector for ScriptedConnector {
         if let Some(err) = &self.stopped {
             return Err(err.clone());
         }
+        let _ = self.clock.now().await;
         self.state = ConnectorState::Connected;
         Ok(Subscription::default())
     }
@@ -109,6 +113,7 @@ impl MarketDataConnector for ScriptedConnector {
         let Some(step) = self.steps.pop_front() else {
             return Ok(None);
         };
+        let _ = self.clock.sleep(Duration::from_nanos(1)).await;
         match step {
             Step::Data(event) => {
                 self.state = ConnectorState::Connected;
@@ -132,17 +137,21 @@ async fn connector_scripted_run() {
     let steps = vec![
         Step::Data(MarketEvent::Bar(bar(100.0, 2000))),
         Step::Data(MarketEvent::Bar(bar(101.0, 3000))),
+        Step::Terminal("end of stream".into()),
     ];
     let mut connector = ScriptedConnector::new(clock, steps);
-    
-    connector.subscribe(SubscriptionParams::new(vec![reliance()])).await.unwrap();
-    
+
+    connector
+        .subscribe(SubscriptionParams::new(vec![reliance()]))
+        .await
+        .unwrap();
+
     let mut results = Vec::new();
-    while let Some(event) = connector.next_event().await.unwrap() {
+    while let Ok(Some(event)) = connector.next_event().await {
         if let MarketEvent::Bar(bar) = event {
             results.push(bar.close());
         }
     }
-    
+
     assert_eq!(results, vec![100.0, 101.0]);
 }

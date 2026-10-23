@@ -42,7 +42,7 @@ impl MarketDataFeed for UpstoxFeed {
 
     async fn subscribe(
         &self,
-        subs: Vec<Subscription>,
+        _subs: Vec<Subscription>,
     ) -> Result<BoxStream<'static, Tick>, MdError> {
         // Implementation would parse Upstox protobuf messages
         let (_, rx) = CoalescingTickBuffer::new(5000);

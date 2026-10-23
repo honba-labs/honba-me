@@ -7,8 +7,7 @@ use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
 use serde::{Deserialize, Serialize};
 
-use crate::catalog::{self, Params, Ruleset, ReasonGroup, ReasonPolarity, SignalHorizon};
-use crate::detector::Firing;
+use crate::catalog::{self, Params, ReasonGroup, ReasonPolarity, Ruleset, SignalHorizon};
 use crate::detectors;
 use crate::series::Series;
 
@@ -65,8 +64,8 @@ pub fn signals_for_horizon(
 /// changes it. The `timeframe` is recorded verbatim on every signal.
 pub fn compute(
     bars: &[Bar],
-    instrument: &InstrumentId,
-    timeframe: &str,
+    _instrument: &InstrumentId,
+    _timeframe: &str,
     ruleset: &Ruleset,
     params: &Params,
 ) -> Vec<Signal> {
@@ -147,7 +146,8 @@ fn weigh(firings: &[crate::detector::Firing]) -> (f64, f64) {
     let mut bull = 0.0;
     let mut bear = 0.0;
     for firing in firings {
-        let code = crate::catalog::reason_code(firing.code).expect("detectors emit catalogued codes");
+        let code =
+            crate::catalog::reason_code(firing.code).expect("detectors emit catalogued codes");
         match code.polarity {
             ReasonPolarity::Bullish => bull += code.weight,
             ReasonPolarity::Bearish => bear += code.weight,
@@ -161,7 +161,8 @@ fn weigh(firings: &[crate::detector::Firing]) -> (f64, f64) {
 fn build_reasons(firings: &[crate::detector::Firing]) -> Vec<Reason> {
     let mut reasons = Vec::with_capacity(firings.len());
     for firing in firings {
-        let code = crate::catalog::reason_code(firing.code).expect("detectors emit catalogued codes");
+        let code =
+            crate::catalog::reason_code(firing.code).expect("detectors emit catalogued codes");
         reasons.push(Reason {
             code: code.code.to_string(),
             group: code.group,
@@ -177,18 +178,34 @@ fn build_reasons(firings: &[crate::detector::Firing]) -> Vec<Reason> {
 /// For buy: stop below entry by 2*ATR, targets at +1R and +2R
 /// For sell: stop above entry by 2*ATR, targets at -1R and -2R
 /// For hold: no stop/targets
-fn compute_trade_setup(direction: SignalDirection, entry_price: f64, atr: Option<f64>) -> (Option<Price>, Vec<Price>) {
-    let entry_decimal = Decimal::from_str_exact(&format!("{entry_price:.2}")).unwrap_or(Decimal::ZERO);
-    let atr_val = atr.unwrap_or(entry_decimal.to_f64().unwrap_or(0.0) * Decimal::from_str_exact("0.02").unwrap_or(Decimal::ZERO).to_f64().unwrap_or(0.0));
+fn compute_trade_setup(
+    direction: SignalDirection,
+    entry_price: f64,
+    atr: Option<f64>,
+) -> (Option<Price>, Vec<Price>) {
+    let entry_decimal =
+        Decimal::from_str_exact(&format!("{entry_price:.2}")).unwrap_or(Decimal::ZERO);
+    let atr_val = atr.unwrap_or(
+        entry_decimal.to_f64().unwrap_or(0.0)
+            * Decimal::from_str_exact("0.02")
+                .unwrap_or(Decimal::ZERO)
+                .to_f64()
+                .unwrap_or(0.0),
+    );
     let stop_distance = atr_val * 2.0;
-    let stop_distance_decimal = Decimal::from_str_exact(&stop_distance.to_string()).unwrap_or(Decimal::ZERO);
+    let stop_distance_decimal =
+        Decimal::from_str_exact(&stop_distance.to_string()).unwrap_or(Decimal::ZERO);
 
     match direction {
         SignalDirection::Buy => {
             let stop = Price(entry_decimal - stop_distance_decimal);
             let targets = vec![
                 Price(entry_decimal + stop_distance_decimal),
-                Price(entry_decimal + stop_distance_decimal * Decimal::from_str_exact("2.0").unwrap_or(Decimal::ZERO)),
+                Price(
+                    entry_decimal
+                        + stop_distance_decimal
+                            * Decimal::from_str_exact("2.0").unwrap_or(Decimal::ZERO),
+                ),
             ];
             (Some(stop), targets)
         }
@@ -196,7 +213,11 @@ fn compute_trade_setup(direction: SignalDirection, entry_price: f64, atr: Option
             let stop = Price(entry_decimal + stop_distance_decimal);
             let targets = vec![
                 Price(entry_decimal - stop_distance_decimal),
-                Price(entry_decimal - stop_distance_decimal * Decimal::from_str_exact("2.0").unwrap_or(Decimal::ZERO)),
+                Price(
+                    entry_decimal
+                        - stop_distance_decimal
+                            * Decimal::from_str_exact("2.0").unwrap_or(Decimal::ZERO),
+                ),
             ];
             (Some(stop), targets)
         }

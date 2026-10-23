@@ -399,6 +399,12 @@ pub fn ruleset_for(horizon: SignalHorizon) -> &'static Ruleset {
         .expect("every horizon has a ruleset")
 }
 
+impl SignalHorizon {
+    pub fn ruleset(self) -> &'static Ruleset {
+        ruleset_for(self)
+    }
+}
+
 /// Detector parameters: the indicator windows and thresholds one evaluation uses.
 ///
 /// These differ by horizon ([`Params::for_horizon`]) but the machinery does not: the same

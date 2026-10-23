@@ -17,7 +17,6 @@
 
 use crate::indicator::Indicator;
 use honba_core::Bar;
-use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
 
 /// Supertrend indicator.
@@ -84,7 +83,7 @@ impl Indicator for Supertrend {
         let close = bar.close.0.to_f64().unwrap_or(0.0);
 
         // Update ATR
-        let atr_value = self.atr.update(bar);
+        let _atr_value = self.atr.update(bar);
 
         self.hl2_values.push(hl2);
         self.close_values.push(close);
@@ -105,7 +104,7 @@ impl Indicator for Supertrend {
         let prev_lower = *self.lower_band.last().unwrap_or(&hl2);
         let prev_close = *self.close_values.last().unwrap_or(&close);
         let prev_supertrend = *self.supertrend.last().unwrap_or(&hl2);
-        let prev_in_uptrend = *self.in_uptrend.last().unwrap_or(&true);
+        let _prev_in_uptrend = *self.in_uptrend.last().unwrap_or(&true);
 
         let mut final_upper = basic_upper;
         let mut final_lower = basic_lower;
@@ -118,26 +117,17 @@ impl Indicator for Supertrend {
             final_lower = basic_lower.max(prev_lower);
         }
 
-        let mut st = final_upper;
-        let mut is_uptrend = true;
-
-        if prev_supertrend == final_upper {
+        let (st, is_uptrend) = if prev_supertrend == final_upper {
             if close <= final_upper {
-                st = final_upper;
-                is_uptrend = true;
+                (final_upper, true)
             } else {
-                st = final_lower;
-                is_uptrend = false;
+                (final_lower, false)
             }
+        } else if close >= final_lower {
+            (final_lower, false)
         } else {
-            if close >= final_lower {
-                st = final_lower;
-                is_uptrend = false;
-            } else {
-                st = final_upper;
-                is_uptrend = true;
-            }
-        }
+            (final_upper, true)
+        };
 
         self.upper_band.push(final_upper);
         self.lower_band.push(final_lower);
@@ -161,4 +151,3 @@ impl Indicator for Supertrend {
         self.in_uptrend.clear();
     }
 }
-

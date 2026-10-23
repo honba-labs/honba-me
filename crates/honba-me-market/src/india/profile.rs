@@ -8,7 +8,9 @@ use crate::costs::CostSchedule;
 use crate::expiry::{ExpiryRules, InstrumentKind, LastThursdayExpiry};
 use crate::profile::MarketProfile;
 use crate::rules::{InstrumentRules, InstrumentRulesProvider, SymbolGrammar};
-use crate::settlement::{MarginModel, MarginRequirement, PositionSide, SettlementRules, SettlementSchedule};
+use crate::settlement::{
+    MarginModel, MarginRequirement, PositionSide, SettlementRules, SettlementSchedule,
+};
 
 use super::calendar::NseCalendar;
 use super::costs::{CostModel, SttRates};
@@ -21,10 +23,7 @@ impl InstrumentRulesProvider for IndiaInstrumentRulesProvider {
     fn rules_for(&self, instrument: &InstrumentId) -> InstrumentRules {
         let _ = instrument;
         // Cash equity: lot size 1, tick size 0.05
-        InstrumentRules::new(
-            Quantity::from_u64(1),
-            Price::from_rupees("0.05").unwrap(),
-        )
+        InstrumentRules::new(Quantity::from_u64(1), Price::from_rupees("0.05").unwrap())
     }
 }
 
@@ -54,12 +53,13 @@ impl SymbolGrammar for IndiaSymbolGrammar {
             Some((ex, sym)) => (ex, sym),
             None => ("NSE", norm.as_str()),
         };
-        let exchange: Exchange = exchange_code.parse().map_err(|_| {
-            crate::MarketError::InvalidSymbol {
-                symbol: raw.to_string(),
-                reason: format!("unknown exchange: {exchange_code}"),
-            }
-        })?;
+        let exchange: Exchange =
+            exchange_code
+                .parse()
+                .map_err(|_| crate::MarketError::InvalidSymbol {
+                    symbol: raw.to_string(),
+                    reason: format!("unknown exchange: {exchange_code}"),
+                })?;
 
         // Try F&O contract parsing first
         if let Ok(contract) = crate::india::fno::parse_fno_symbol(symbol) {
@@ -99,7 +99,6 @@ impl MarginModel for IndiaMarginModel {
                 // Option buying 100% premium; Option selling SPAN+Exposure
                 MarginRequirement::new(notional * 0.30, notional * 0.25)
             }
-            _ => MarginRequirement::zero(),
         }
     }
 }

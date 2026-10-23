@@ -11,7 +11,7 @@
 
 use std::collections::HashMap;
 
-use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike, Utc};
+use chrono::{DateTime, Datelike, NaiveDateTime, NaiveTime, Timelike, Utc};
 use honba_core::{Bar, InstrumentId, Price, Quantity};
 
 use crate::calendar::MarketCalendar;
@@ -131,7 +131,7 @@ impl BarAccumulator {
         self.volume = Quantity(self.volume.0 + bar.volume.0);
     }
 
-    fn to_bar(&self, instrument: &InstrumentId, spec: BarSpecification) -> Bar {
+    fn to_bar(&self, instrument: &InstrumentId, _spec: BarSpecification) -> Bar {
         Bar {
             instrument: instrument.clone(),
             open: self.open,

@@ -4,8 +4,9 @@
 //! to a Fraction-exact reference (derived independently in Python). Both the
 //! streaming indicators and a pure O(n) reference read from this one file.
 
-use honba_indicators::{Donchian, DonchianValue, Indicator, Stochastic, WilliamsR};
 use honba_core::{Bar, Exchange, InstrumentId, Price, Quantity};
+use honba_indicators::{Donchian, DonchianValue, Indicator, Stochastic, WilliamsR};
+use rust_decimal::Decimal;
 use serde_json::Value;
 
 const FIXTURE: &str = include_str!("vectors_batch3.json");
@@ -17,12 +18,12 @@ fn any_instrument() -> InstrumentId {
 fn bar(h: f64, l: f64, c: f64) -> Bar {
     Bar {
         instrument: any_instrument(),
-        open: Price::from(c),
-        high: Price::from(h),
-        low: Price::from(l),
-        close: Price::from(c),
-        volume: Quantity::from(1.0),
-        ts_event: chrono::Utc::now(),
+        open: Price::new(Decimal::from_f64_retain(c).unwrap_or_default()),
+        high: Price::new(Decimal::from_f64_retain(h).unwrap_or_default()),
+        low: Price::new(Decimal::from_f64_retain(l).unwrap_or_default()),
+        close: Price::new(Decimal::from_f64_retain(c).unwrap_or_default()),
+        volume: Quantity::from_u64(1),
+        timestamp: chrono::Utc::now(),
     }
 }
 

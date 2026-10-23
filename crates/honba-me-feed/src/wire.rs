@@ -15,7 +15,7 @@
 //! `OptionType` are the canonical `honba_core` ones — those shapes matched
 //! and are reused directly. `UnixNanos` is the one exception: see below.
 
-use honba_core::{Exchange, InstrumentId};
+use honba_core::InstrumentId;
 use serde::{Deserialize, Serialize};
 
 /// Orders instruments by exchange, then symbol.
@@ -57,8 +57,8 @@ impl UnixNanos {
     pub fn from_datetime(ts: chrono::DateTime<chrono::Utc>) -> Self {
         // Use i128 for the nanosecond computation to avoid overflow/wrap
         // on pre-1970 timestamps; then saturate into u64::MAX.
-        let total_nanos = (ts.timestamp() as i128 * 1_000_000_000)
-            + i128::from(ts.timestamp_subsec_nanos());
+        let total_nanos =
+            (ts.timestamp() as i128 * 1_000_000_000) + i128::from(ts.timestamp_subsec_nanos());
         let clamped = total_nanos.clamp(0, u64::MAX as i128);
         Self(clamped as u64)
     }

@@ -22,7 +22,7 @@ license = "AGPL-3.0"
 repository = "https://github.com/your-org/honba-me"
 
 [workspace.dependencies]
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util", "fs"] }
 tokio-stream = "0.1"
 tokio-tungstenite = { version = "0.24", features = ["rustls-tls-native-roots"] }
 flate2 = "1"

@@ -2,8 +2,8 @@
 
 use async_trait::async_trait;
 use chrono::Utc;
-use futures::stream::BoxStream;
 use flate2::read::ZlibDecoder;
+use futures::stream::BoxStream;
 use rust_decimal::Decimal;
 use std::io::Read;
 use std::sync::Arc;
@@ -12,7 +12,7 @@ use tokio::sync::RwLock;
 use honba_core::{DepthLevel, Exchange, InstrumentId, Price, Quantity, Tick};
 use honba_me_core::{
     CoalescingTickBuffer, FeedHealth, MarketDataFeed, MdError, ReconnectionManager, Subscription,
-    SymbolMapper, WsClient, WsConfig,
+    SymbolMapper, WsClient, WsMessage,
 };
 
 /// Zerodha Kite Ticker feed adapter.
@@ -52,6 +52,16 @@ impl ZerodhaFeed {
             mapper: Arc::new(RwLock::new(SymbolMapper::new())),
             reconnection: Arc::new(ReconnectionManager::new()),
         }
+    }
+
+    /// Decompress a zlib-compressed Kite binary frame.
+    pub fn decompress_zlib(compressed: &[u8]) -> Result<Vec<u8>, MdError> {
+        let mut decoder = ZlibDecoder::new(compressed);
+        let mut out = Vec::new();
+        decoder
+            .read_to_end(&mut out)
+            .map_err(|e| MdError::Transport(format!("zlib decompression error: {e}")))?;
+        Ok(out)
     }
 
     /// Parse an 8-byte Kite LTP binary packet into canonical [`Tick::Ltp`].
@@ -120,12 +130,14 @@ impl ZerodhaFeed {
         let token = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
         let ltp_raw = u32::from_be_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
         let ltp_dec = Decimal::from(ltp_raw) / Decimal::from(100);
-        let last_qty_raw = u32::from_be_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]);
-        let avg_price_raw = u32::from_be_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]);
-        let volume_raw = u64::from_be_bytes([bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23]]);
+        let _last_qty_raw = u32::from_be_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]);
+        let _avg_price_raw = u32::from_be_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]);
+        let _volume_raw = u64::from_be_bytes([
+            bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23],
+        ]);
         let buy_qty_raw = u32::from_be_bytes([bytes[24], bytes[25], bytes[26], bytes[27]]);
         let sell_qty_raw = u32::from_be_bytes([bytes[28], bytes[29], bytes[30], bytes[31]]);
-        let open_raw = u32::from_be_bytes([bytes[32], bytes[33], bytes[34], bytes[35]]);
+        let _open_raw = u32::from_be_bytes([bytes[32], bytes[33], bytes[34], bytes[35]]);
         let high_raw = u32::from_be_bytes([bytes[36], bytes[37], bytes[38], bytes[39]]);
         let low_raw = u32::from_be_bytes([bytes[40], bytes[41], bytes[42], bytes[43]]);
 
@@ -162,7 +174,9 @@ impl ZerodhaFeed {
         let token = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
         let ltp_raw = u32::from_be_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
         let ltp_dec = Decimal::from(ltp_raw) / Decimal::from(100);
-        let volume_raw = u64::from_be_bytes([bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23]]);
+        let _volume_raw = u64::from_be_bytes([
+            bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23],
+        ]);
 
         let token_str = token.to_string();
         let inst = mapper.to_canonical(&token_str).unwrap_or_else(|| {
@@ -173,22 +187,50 @@ impl ZerodhaFeed {
         let mut bids = Vec::with_capacity(5);
         for i in 0..5 {
             let offset = 56 + i * 12;
-            let price_raw = u32::from_be_bytes([bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3]]);
-            let qty_raw = u32::from_be_bytes([bytes[offset+4], bytes[offset+5], bytes[offset+6], bytes[offset+7]]);
+            let price_raw = u32::from_be_bytes([
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
+            ]);
+            let qty_raw = u32::from_be_bytes([
+                bytes[offset + 4],
+                bytes[offset + 5],
+                bytes[offset + 6],
+                bytes[offset + 7],
+            ]);
             let price = Price::new(Decimal::from(price_raw) / Decimal::from(100));
             let qty = Quantity::new(Decimal::from(qty_raw));
-            bids.push(DepthLevel { price, quantity: qty, orders_count: None });
+            bids.push(DepthLevel {
+                price,
+                quantity: qty,
+                orders_count: None,
+            });
         }
 
         // Parse 5 ask levels
         let mut asks = Vec::with_capacity(5);
         for i in 0..5 {
             let offset = 116 + i * 12;
-            let price_raw = u32::from_be_bytes([bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3]]);
-            let qty_raw = u32::from_be_bytes([bytes[offset+4], bytes[offset+5], bytes[offset+6], bytes[offset+7]]);
+            let price_raw = u32::from_be_bytes([
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
+            ]);
+            let qty_raw = u32::from_be_bytes([
+                bytes[offset + 4],
+                bytes[offset + 5],
+                bytes[offset + 6],
+                bytes[offset + 7],
+            ]);
             let price = Price::new(Decimal::from(price_raw) / Decimal::from(100));
             let qty = Quantity::new(Decimal::from(qty_raw));
-            asks.push(DepthLevel { price, quantity: qty, orders_count: None });
+            asks.push(DepthLevel {
+                price,
+                quantity: qty,
+                orders_count: None,
+            });
         }
 
         let now = Utc::now();
@@ -207,7 +249,7 @@ impl ZerodhaFeed {
         let mut frames = Vec::new();
         let mut pos = 0;
         while pos + 2 <= data.len() {
-            let len = u16::from_be_bytes([data[pos], data[pos+1]]) as usize;
+            let len = u16::from_be_bytes([data[pos], data[pos + 1]]) as usize;
             pos += 2;
             if pos + len <= data.len() {
                 frames.push(&data[pos..pos + len]);
@@ -235,18 +277,19 @@ impl MarketDataFeed for ZerodhaFeed {
         }
 
         let (buf, rx) = CoalescingTickBuffer::new(5000);
-        
+
         // Spawn a background task to process WebSocket messages
-        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<WsMessage>();
         let mapper = self.mapper.clone();
-        
+
         let buf_tx = buf.clone();
 
         tokio::spawn(async move {
             while let Some(msg) = msg_rx.recv().await {
                 if msg.is_binary {
                     // Zerodha packets might be compressed; check if first byte indicates it
-                    let data = if msg.payload.first() == Some(&0x78) { // zlib header
+                    let data = if msg.payload.first() == Some(&0x78) {
+                        // zlib header
                         match Self::decompress_zlib(&msg.payload) {
                             Ok(d) => d,
                             Err(_) => continue,
@@ -266,7 +309,7 @@ impl MarketDataFeed for ZerodhaFeed {
                             184 => Self::parse_binary_depth_184b(frame, &mapper),
                             _ => continue, // Unknown packet size
                         };
-                        
+
                         if let Ok(tick) = tick {
                             let _ = buf_tx.send(tick).await;
                         }
@@ -275,8 +318,11 @@ impl MarketDataFeed for ZerodhaFeed {
             }
         });
 
-        self.ws_client.connect(msg_tx).await.map_err(|e| MdError::Transport(e.to_string()))?;
-        
+        self.ws_client
+            .connect(msg_tx)
+            .await
+            .map_err(|e| MdError::Transport(e.to_string()))?;
+
         let stream = tokio_stream::wrappers::ReceiverStream::new(rx);
         Ok(Box::pin(stream))
     }
@@ -288,10 +334,7 @@ impl MarketDataFeed for ZerodhaFeed {
         Ok(())
     }
 
-    async fn fetch_snapshot(
-        &self,
-        _instruments: &[InstrumentId],
-    ) -> Result<Vec<Tick>, MdError> {
+    async fn fetch_snapshot(&self, _instruments: &[InstrumentId]) -> Result<Vec<Tick>, MdError> {
         // Stub: REST snapshot fetch would be implemented here
         Ok(Vec::new())
     }

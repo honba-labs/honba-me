@@ -8,17 +8,15 @@
 //! this transport to ensure consistent connection behavior and sub-15 microsecond latency
 //! characteristics.
 
-use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures::{SinkExt, StreamExt};
 use rand::Rng;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::net::TcpStream;
-use tokio::sync::{RwLock, mpsc};
-use tokio_tungstenite::{connect_async, tungstenite::protocol::Message, WebSocketStream, MaybeTlsStream};
 use thiserror::Error;
-use tracing::{debug, info, warn};
+use tokio::sync::{RwLock, mpsc};
+use tokio_tungstenite::{WebSocketStream, connect_async, tungstenite::protocol::Message};
+use tracing::{info, warn};
 
 /// Result type for WebSocket operations.
 pub type WsResult<T> = Result<T, WsError>;
@@ -142,14 +140,19 @@ impl WsClient {
 
     /// Check if the client is connected.
     pub async fn is_connected(&self) -> bool {
-        matches!(self.state.read().await.clone(), WsConnectionState::Connected)
+        matches!(
+            self.state.read().await.clone(),
+            WsConnectionState::Connected
+        )
     }
 
     /// Send a message over the WebSocket connection.
     pub async fn send(&self, msg: WsOutMessage) -> WsResult<()> {
         let tx = self.tx.lock().await;
         if let Some(sender) = tx.as_ref() {
-            sender.send(msg).map_err(|e| WsError::Transport(e.to_string()))?;
+            sender
+                .send(msg)
+                .map_err(|e| WsError::Transport(e.to_string()))?;
             Ok(())
         } else {
             Err(WsError::Transport("not connected".into()))
@@ -196,7 +199,6 @@ impl WsClient {
         let tx = self.tx.clone();
         let msg_tx = self.msg_tx.clone();
         let last_message = self.last_message.clone();
-        let reconnect_task = self.reconnect_task.clone();
 
         let task = tokio::spawn(async move {
             let mut reconnect_delay = config.initial_reconnect_delay_secs;
@@ -299,7 +301,9 @@ impl WsClient {
     /// Check if the connection appears dead (no messages received within timeout).
     pub async fn is_dead(&self) -> bool {
         match self.last_message_elapsed().await {
-            Some(elapsed) => elapsed > Duration::from_secs(self.config.dead_connection_timeout_secs),
+            Some(elapsed) => {
+                elapsed > Duration::from_secs(self.config.dead_connection_timeout_secs)
+            }
             None => !self.is_connected().await,
         }
     }
@@ -307,14 +311,15 @@ impl WsClient {
 
 /// Run the WebSocket message loop with heartbeat.
 async fn run_ws_loop(
-    mut ws_stream: WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+    ws_stream: WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
     config: WsConfig,
     tx: Arc<tokio::sync::Mutex<Option<mpsc::UnboundedSender<WsOutMessage>>>>,
     msg_tx: mpsc::UnboundedSender<WsMessage>,
     last_message: Arc<RwLock<Option<Instant>>>,
 ) -> WsResult<()> {
     let (mut ws_tx, mut ws_rx) = ws_stream.split();
-    let mut heartbeat_interval = tokio::time::interval(Duration::from_secs(config.heartbeat_interval_secs));
+    let mut heartbeat_interval =
+        tokio::time::interval(Duration::from_secs(config.heartbeat_interval_secs));
     heartbeat_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     let (out_tx, mut out_rx) = mpsc::unbounded_channel::<WsOutMessage>();

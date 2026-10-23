@@ -3,6 +3,8 @@
 //! Canonical market data feed interfaces, broker symbol mapping, backpressure coalescing,
 //! and WebSocket reconnection state management for Indian equities.
 
+pub mod ws_client;
+
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures::stream::BoxStream;
@@ -13,6 +15,9 @@ use thiserror::Error;
 use tokio::sync::{Mutex, RwLock, mpsc};
 
 pub use honba_core::{Bar, DepthLevel, Exchange, InstrumentId, Price, PriceBand, Quantity, Tick};
+pub use ws_client::{
+    WsClient, WsConfig, WsConnectionState, WsError, WsMessage, WsOutMessage, WsResult,
+};
 
 /// Subscription depth/mode for market data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -97,10 +102,7 @@ pub trait MarketDataFeed: Send + Sync {
 
     /// Fetch a snapshot of current quotes for the given instruments via REST.
     /// Used for reconciliation after reconnection to bridge any missed ticks.
-    async fn fetch_snapshot(
-        &self,
-        instruments: &[InstrumentId],
-    ) -> Result<Vec<Tick>, MdError>;
+    async fn fetch_snapshot(&self, instruments: &[InstrumentId]) -> Result<Vec<Tick>, MdError>;
 
     /// Get current feed health status.
     fn feed_health(&self) -> FeedHealth;
@@ -188,6 +190,7 @@ impl SymbolMapper {
 /// - Eviction overflow hash map (`HashMap<InstrumentId, Tick>`) that coalesces LTP and Quote
 ///   updates per scrip when the queue is saturated, preserving chronological monotonicity while
 ///   ensuring zero loss of the latest quote.
+#[derive(Clone)]
 pub struct CoalescingTickBuffer {
     tx: mpsc::Sender<Tick>,
     /// Last tick per instrument for coalescing under backpressure.
@@ -249,10 +252,6 @@ impl CoalescingTickBuffer {
     /// Drain any coalesced ticks from the LVC cache into the channel.
     /// Should be called when the consumer has caught up and the channel has space.
     pub async fn drain_coalesced(&self) -> Result<usize, MdError> {
-        let cache = self.last_tick_per_instrument.lock().await;
-        let count = cache.len();
-        drop(cache);
-
         let mut drained = 0;
         let mut cache = self.last_tick_per_instrument.lock().await;
         for (inst, tick) in cache.iter() {
@@ -387,11 +386,7 @@ impl MarketDataEnricher {
         let (price, volume) = match tick {
             Tick::Ltp { price, volume, .. } => (*price, *volume),
             Tick::Quote {
-                bid,
-                ask,
-                bid_qty,
-                ask_qty,
-                ..
+                bid, ask, bid_qty, ..
             } => {
                 let mid = Price(((*bid).0 + (*ask).0) / Decimal::from(2));
                 let vol = *bid_qty;
@@ -424,8 +419,6 @@ impl MarketDataEnricher {
         })
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -532,5 +525,3 @@ mod tests {
         ));
     }
 }
-
-pub mod ws_client;

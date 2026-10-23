@@ -11,6 +11,7 @@ description = "Incremental technical indicators over price and bar series"
 name = "honba_indicators"
 
 [dependencies]
+chrono.workspace = true
 honba-core.workspace = true
 rust_decimal.workspace = true
 serde.workspace = true

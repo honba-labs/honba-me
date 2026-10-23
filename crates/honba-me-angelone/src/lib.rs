@@ -8,7 +8,6 @@ use chrono::Utc;
 use futures::stream::BoxStream;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
-use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -39,7 +38,11 @@ impl AngelOneFeed {
     pub const DEFAULT_WS_URL: &'static str = "wss://smartapisocket.angelone.in/smart-stream";
 
     /// Create a new Angel One feed adapter.
-    pub fn new(api_key: impl Into<String>, client_code: impl Into<String>, jwt_token: impl Into<String>) -> Self {
+    pub fn new(
+        api_key: impl Into<String>,
+        client_code: impl Into<String>,
+        jwt_token: impl Into<String>,
+    ) -> Self {
         Self::with_ws_url(api_key, client_code, jwt_token, Self::DEFAULT_WS_URL)
     }
 
@@ -79,7 +82,10 @@ impl AngelOneFeed {
             1 => Self::parse_quote(bytes, mapper),
             2 => Self::parse_depth(bytes, mapper),
             3 => Err(MdError::Transport("Status message not supported".into())),
-            _ => Err(MdError::Transport(format!("Unknown message type: {}", msg_type))),
+            _ => Err(MdError::Transport(format!(
+                "Unknown message type: {}",
+                msg_type
+            ))),
         }
     }
 
@@ -98,8 +104,7 @@ impl AngelOneFeed {
 
         // 8 bytes: LTP (double, little-endian)
         let ltp_raw = f64::from_le_bytes([
-            bytes[26], bytes[27], bytes[28], bytes[29],
-            bytes[30], bytes[31], bytes[32], bytes[33],
+            bytes[26], bytes[27], bytes[28], bytes[29], bytes[30], bytes[31], bytes[32], bytes[33],
         ]);
         let price_dec = Decimal::from_f64(ltp_raw).unwrap_or(Decimal::ZERO);
 
@@ -132,15 +137,13 @@ impl AngelOneFeed {
 
         // 8 bytes: LTP (double, little-endian)
         let ltp_raw = f64::from_le_bytes([
-            bytes[26], bytes[27], bytes[28], bytes[29],
-            bytes[30], bytes[31], bytes[32], bytes[33],
+            bytes[26], bytes[27], bytes[28], bytes[29], bytes[30], bytes[31], bytes[32], bytes[33],
         ]);
         let ltp_dec = Decimal::from_f64(ltp_raw).unwrap_or(Decimal::ZERO);
 
         // 8 bytes: exchange timestamp (double, little-endian) - unused
         let _exchange_ts_raw = f64::from_le_bytes([
-            bytes[34], bytes[35], bytes[36], bytes[37],
-            bytes[38], bytes[39], bytes[40], bytes[41],
+            bytes[34], bytes[35], bytes[36], bytes[37], bytes[38], bytes[39], bytes[40], bytes[41],
         ]);
 
         let inst = mapper.to_canonical(&token_str).unwrap_or_else(|| {
@@ -157,11 +160,20 @@ impl AngelOneFeed {
                 break;
             }
             let price_raw = f64::from_le_bytes([
-                bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3],
-                bytes[offset+4], bytes[offset+5], bytes[offset+6], bytes[offset+7],
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
+                bytes[offset + 4],
+                bytes[offset + 5],
+                bytes[offset + 6],
+                bytes[offset + 7],
             ]);
             let qty_raw = u32::from_le_bytes([
-                bytes[offset+8], bytes[offset+9], bytes[offset+10], bytes[offset+11],
+                bytes[offset + 8],
+                bytes[offset + 9],
+                bytes[offset + 10],
+                bytes[offset + 11],
             ]);
             bids.push(DepthLevel {
                 price: Price::new(Decimal::from_f64(price_raw).unwrap_or(Decimal::ZERO)),
@@ -176,11 +188,20 @@ impl AngelOneFeed {
                 break;
             }
             let price_raw = f64::from_le_bytes([
-                bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3],
-                bytes[offset+4], bytes[offset+5], bytes[offset+6], bytes[offset+7],
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
+                bytes[offset + 4],
+                bytes[offset + 5],
+                bytes[offset + 6],
+                bytes[offset + 7],
             ]);
             let qty_raw = u32::from_le_bytes([
-                bytes[offset+8], bytes[offset+9], bytes[offset+10], bytes[offset+11],
+                bytes[offset + 8],
+                bytes[offset + 9],
+                bytes[offset + 10],
+                bytes[offset + 11],
             ]);
             asks.push(DepthLevel {
                 price: Price::new(Decimal::from_f64(price_raw).unwrap_or(Decimal::ZERO)),
@@ -246,10 +267,7 @@ impl MarketDataFeed for AngelOneFeed {
         Ok(())
     }
 
-    async fn fetch_snapshot(
-        &self,
-        _instruments: &[InstrumentId],
-    ) -> Result<Vec<Tick>, MdError> {
+    async fn fetch_snapshot(&self, _instruments: &[InstrumentId]) -> Result<Vec<Tick>, MdError> {
         Ok(Vec::new())
     }
 
@@ -290,10 +308,15 @@ mod tests {
 
         let tick = AngelOneFeed::parse_binary_message(&bytes, &mapper).unwrap();
         match tick {
-            Tick::Ltp { instrument, price, .. } => {
+            Tick::Ltp {
+                instrument, price, ..
+            } => {
                 assert_eq!(instrument.exchange, Exchange::Nse);
                 assert_eq!(instrument.symbol, "INE009A01021");
-                assert!((price.0 - Decimal::from_str_exact("1420.75").unwrap()).abs() < Decimal::from_str_exact("0.001").unwrap());
+                assert!(
+                    (price.0 - Decimal::from_str_exact("1420.75").unwrap()).abs()
+                        < Decimal::from_str_exact("0.001").unwrap()
+                );
             }
             _ => panic!("expected LTP tick"),
         }
@@ -344,11 +367,19 @@ mod tests {
 
         let tick = AngelOneFeed::parse_binary_message(&bytes, &mapper).unwrap();
         match tick {
-            Tick::Depth { bids, asks, last_price, .. } => {
+            Tick::Depth {
+                bids,
+                asks,
+                last_price,
+                ..
+            } => {
                 assert_eq!(bids.len(), 5);
                 assert_eq!(asks.len(), 5);
                 assert!(last_price.is_some());
-                assert!((last_price.unwrap().0 - Decimal::from_str_exact("1420.75").unwrap()).abs() < Decimal::from_str_exact("0.001").unwrap());
+                assert!(
+                    (last_price.unwrap().0 - Decimal::from_str_exact("1420.75").unwrap()).abs()
+                        < Decimal::from_str_exact("0.001").unwrap()
+                );
             }
             _ => panic!("expected Depth tick"),
         }

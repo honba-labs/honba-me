@@ -120,7 +120,9 @@ impl fmt::Display for ScreenerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnsupportedMetric { key } => write!(f, "unsupported metric: {key}"),
-            Self::InvalidOperand { op, message } => write!(f, "invalid operand for {op:?}: {message}"),
+            Self::InvalidOperand { op, message } => {
+                write!(f, "invalid operand for {op:?}: {message}")
+            }
             Self::InvalidFilter { message } => write!(f, "invalid filter: {message}"),
         }
     }
@@ -128,18 +130,12 @@ impl fmt::Display for ScreenerError {
 
 impl std::error::Error for ScreenerError {}
 
-fn invalid_filter(message: impl Into<String>) -> ScreenerError {
-    ScreenerError::InvalidFilter {
-        message: message.into(),
-    }
-}
-
 /// Bars in the 52-week window; fewer bars than this is insufficient data.
 const WEEK52_BARS: usize = 252;
 
 /// A bar-derived metric.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Metric {
+pub enum Metric {
     Open,
     High,
     Low,
@@ -162,9 +158,11 @@ fn parse_metric_inner(key: &str) -> Result<Metric, ScreenerError> {
         "price_52_week_low" => Ok(Metric::Week52Low),
         "price_52_week_high" => Ok(Metric::Week52High),
         s if s.starts_with("sma") => {
-            let period: usize = s[3..].parse().map_err(|_| ScreenerError::UnsupportedMetric {
-                key: key.to_owned(),
-            })?;
+            let period: usize = s[3..]
+                .parse()
+                .map_err(|_| ScreenerError::UnsupportedMetric {
+                    key: key.to_owned(),
+                })?;
             Ok(Metric::Sma(period))
         }
         "rsi14" | "rsi" => Ok(Metric::Rsi14),
@@ -217,17 +215,13 @@ fn series(metric: Metric, bars: &[Bar]) -> Vec<Option<f64>> {
         Metric::Sma(period) => {
             let mut sma = Sma::new(period);
             bars.iter()
-                .map(|b| {
-                    sma.update(b.close.0.to_string().parse::<f64>().unwrap_or(0.0))
-                })
+                .map(|b| sma.update(b.close.0.to_string().parse::<f64>().unwrap_or(0.0)))
                 .collect()
         }
         Metric::Rsi14 => {
             let mut rsi = Rsi::new(14);
             bars.iter()
-                .map(|b| {
-                    rsi.update(b.close.0.to_string().parse::<f64>().unwrap_or(0.0))
-                })
+                .map(|b| rsi.update(b.close.0.to_string().parse::<f64>().unwrap_or(0.0)))
                 .collect()
         }
     }
@@ -382,9 +376,7 @@ pub fn evaluate_predicate(
     if bars.is_empty() {
         return Ok(false);
     }
-    if matches!(lhs_metric, Metric::Week52Low | Metric::Week52High)
-        && bars.len() < WEEK52_BARS
-    {
+    if matches!(lhs_metric, Metric::Week52Low | Metric::Week52High) && bars.len() < WEEK52_BARS {
         return Ok(false);
     }
     let lhs_series = series(lhs_metric, bars);
@@ -393,7 +385,8 @@ pub fn evaluate_predicate(
     };
     let lhs_prev = lhs_series.len().checked_sub(2).and_then(|i| lhs_series[i]);
 
-    let scalar_val = serde_json::Number::from_f64(pred.value).unwrap_or(serde_json::Number::from(0));
+    let scalar_val =
+        serde_json::Number::from_f64(pred.value).unwrap_or(serde_json::Number::from(0));
     let scalar = as_number(&serde_json::Value::Number(scalar_val));
     let (rhs_curr, rhs_prev) = (scalar, scalar);
 
@@ -408,17 +401,18 @@ pub fn evaluate_predicate(
                 lp >= rp && lhs_curr < rc
             })
         }
-        _ => compare(lhs_curr, pred.op, &serde_json::Value::Number(
-            serde_json::Number::from_f64(pred.value).unwrap_or(serde_json::Number::from(0))
-        )),
+        _ => compare(
+            lhs_curr,
+            pred.op,
+            &serde_json::Value::Number(
+                serde_json::Number::from_f64(pred.value).unwrap_or(serde_json::Number::from(0)),
+            ),
+        ),
     }
 }
 
 /// Evaluates a group of predicates against a bar history.
-pub fn evaluate_group(
-    group: &ScreenerFilterGroup,
-    bars: &[Bar],
-) -> Result<bool, ScreenerError> {
+pub fn evaluate_group(group: &ScreenerFilterGroup, bars: &[Bar]) -> Result<bool, ScreenerError> {
     match group {
         ScreenerFilterGroup::And(groups) => groups
             .iter()

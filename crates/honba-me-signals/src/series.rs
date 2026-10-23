@@ -4,8 +4,8 @@
 //! indicator has primed, so a detector naturally cannot fire before its inputs are warm. Built
 //! with the incremental indicators in `honba-indicators`, so the computation is causal.
 
-use honba_indicators::{Adx, Cpr, Ema, Indicator, Macd, MacdValue, Obv, Rsi, Sma, Supertrend, Vwap, Atr};
 use honba_core::Bar;
+use honba_indicators::{Atr, Cpr, Ema, Indicator, Macd, MacdValue, Rsi, Sma, Vwap};
 
 use crate::catalog::Params;
 
@@ -36,6 +36,7 @@ pub(crate) struct Series {
     /// VWAP of close.
     pub vwap: Vec<Option<f64>>,
     /// CPR Pivot value.
+    #[allow(dead_code)]
     pub cpr_pivot: Vec<Option<f64>>,
     /// CPR Bottom Central Pivot.
     pub cpr_bc: Vec<Option<f64>>,

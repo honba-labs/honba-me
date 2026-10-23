@@ -2,7 +2,6 @@
 
 use chrono::{NaiveDate, NaiveTime};
 use honba_core::{Currency, OrderSide};
-use serde::{Deserialize, Serialize};
 
 use crate::calendar::{MarketCalendar, Session};
 use crate::costs::{CostSchedule, FeeBreakdown, MarketSegment};
