@@ -294,7 +294,7 @@ Each broker crate must provide a live async WebSocket connection (`tokio-tungste
 
 ### Phase 6: Intraday Signal Detectors & End-to-End Runtime Integration (M5) — Week 13–14
 - [x] **6.1 Intraday Signal Detectors (`honba-me-signals`)**
-- [ ] **6.2 End-to-End System Integration**
+- [x] **6.2 End-to-End System Integration**
 
 ---
 
