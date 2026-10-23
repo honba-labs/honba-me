@@ -261,49 +261,33 @@ Each broker crate must provide a live async WebSocket connection (`tokio-tungste
   - [x] Implement `MarketDataEnricher` to attach dynamic `PriceBand` and intraday VWAP to incoming ticks.
 
 ### Phase 2: Production WebSocket Clients & Multi-Broker Binary Decoders (M1) — Week 3–5
-- [x] **2.1 Shared WebSocket Transport (`honba-me-core`)**
-  - [x] Build reusable `WsClient` wrapping `tokio-tungstenite` with `rustls-tls-native-roots`.
-  - [x] Implement automated heartbeat ping/pong timer and dead-connection detection.
-  - [x] Implement exponential backoff reconnection loop with full jitter (1s to 60s).
-  - [x] Implement automatic subscription replay on reconnect.
-- [x] **2.2 Zerodha Kite Ticker (`honba-me-zerodha`)**
-  - [x] Implement full binary decoders: 8B LTP, 28B Index, 44B Quote, and 184B 5-Depth.
-  - [x] Add zlib decompression for bundled binary frames.
-  - [x] Implement REST quote snapshot fetch on reconnect via Kite REST API.
-  - [x] Wire live WebSocket connection to `subscribe()` stream.
-- [x] **2.3 Upstox v2 Feed (`honba-me-upstox`)**
-  - [x] Add `prost` Protobuf compilation for `MarketDataFeed.proto`.
-  - [x] Implement binary Protobuf parsing for `LTPFeed`, `MarketFullFeed`, and `OptionGreeks`.
-  - [x] Wire dynamic authorized WebSocket handshake and streaming.
-- [x] **2.4 Fyers v3 Data Socket (`honba-me-fyers`)**
-  - [x] Implement 72B Lite and 200B Depth binary decoders and ping/pong protocol.
-  - [x] Wire live WebSocket connection.
-- [x] **2.5 Angel One SmartAPI 2.0 (`honba-me-angelone`) [NEW]**
-  - [x] Scaffold `honba-me-angelone` crate and add to workspace.
-  - [x] Implement SmartAPI binary WebSocket 2.0 parser and JWT auth handshake.
+- [ ] **2.1 Shared WebSocket Transport (`honba-me-core`)**
+- [ ] **2.2 Zerodha Kite Ticker (`honba-me-zerodha`)**
+- [ ] **2.3 Upstox v2 Feed (`honba-me-upstox`)**
+- [ ] **2.4 Fyers v3 Data Socket (`honba-me-fyers`)**
+- [ ] **2.5 Angel One SmartAPI 2.0 (`honba-me-angelone`) [NEW]**
 
 ### Phase 3: Instrument Master & Corporate Actions Engine (M2) — Week 6–7
-- [x] **3.1 Instrument Master Ingestion (`honba-me-normalizer`)**
-  - [x] Implement automated downloader for Zerodha `instruments.csv`, Upstox `complete.json.gz`, and NSE `EQUITY_L.csv`.
-  - [x] Build fast in-memory trie and multi-key index for Token $\leftrightarrow$ Symbol $\leftrightarrow$ ISIN $\leftrightarrow$ `InstrumentId`.
-  - [x] Implement dynamic tick size and lot size resolver.
-- [x] **3.2 Corporate Actions Engine (`honba-me-normalizer`)**
-  - [x] Build corporate action event ledger (splits, bonuses, dividends, symbol changes).
-  - [x] Implement backward/forward price adjustment calculation for OHLCV bars.
-  - [x] Expose adjusted series generation to backtester and feed readers.
+- [ ] **3.1 Instrument Master Ingestion (`honba-me-normalizer`)**
+- [ ] **3.2 Corporate Actions Engine (`honba-me-normalizer`)**
 
 ### Phase 4: Parquet Lakehouse v2, Bhavcopy & Live Tick Recorder (M3) — Week 8–10
-- [ ] **4.1 Parquet Lakehouse v2 (`honba-me-feed`)**
-  - [ ] Redesign Parquet schema using Arrow 53 with `Decimal128(18, 4)` precision.
-  - [ ] Implement Hive-partitioned file structure (`exchange=.../date=...`).
-  - [ ] Update `ParquetTickStore` and `DatasetReader` to return canonical `honba_core::Tick` and `Bar`.
-- [ ] **4.2 Data Loaders Crate (`honba-me-loaders`) [NEW]**
-  - [ ] Scaffold `honba-me-loaders` crate.
-  - [ ] Implement daily NSE Bhavcopy downloader (`SEC_BHAVDATA_V2` & delivery files).
-  - [ ] Implement broker REST historical bar loaders (Kite & Upstox historical candles) for gap backfill.
-  - [ ] Implement DuckDB query views over Parquet directories.
-- [ ] **4.3 Live Tick Recorder Daemon (`honba-me-feed`)**
-  - [ ] Implement `TickRecorder` actor with rolling memory buffers and Snappy/Zstd compressed Parquet flushing.
+- [x] **4.1 Parquet Lakehouse v2 (`honba-me-feed`)**
+  - [x] Redesign Parquet schema using Arrow 53 with `Decimal128(18, 4)` precision (`lakehouse::{tick_schema_v2, bar_schema_v2}`; timestamps are `Timestamp(ns, UTC)`; depth ladder and price band stored as JSON columns).
+  - [x] Implement Hive-partitioned file structure: `ticks/exchange=NSE/date=YYYY-MM-DD/SYMBOL.parquet` and `bars/timeframe=1m/exchange=NSE/year=YYYY/month=MM/SYMBOL.parquet`. `date`/`year`/`month` are **IST** calendar values. Writes are append-safe (`SYMBOL.part-NNNN.parquet`, temp-file + atomic rename) and Zstd (default) / Snappy / none.
+  - [x] Canonical read path: `Lakehouse` implements `honba_core::{TickReader, BarReader}` and returns `honba_core::Tick` / `Bar`.
+  - [x] Legacy bridge (`honba_feed::canonical`): `ParquetTickStore::canonical_ticks()`, `bars_to_canonical()`, `migrate_tick_store()` convert the legacy `f64` wire types to exact decimals and migrate old stores into the lakehouse.
+  - [ ] *Follow-up:* `ParquetTickStore` / `DatasetReader` still **return** the legacy `f64` `wire` types through their async ports (the engine-facing `DatasetFeed` depends on them); callers get canonical types via the bridge or by reading the `Lakehouse` directly. Retiring the legacy return types is tracked with the engine-port migration, not Phase 4.
+- [x] **4.2 Data Loaders Crate (`honba-me-loaders`) [NEW]**
+  - [x] Scaffold `honba-me-loaders` crate.
+  - [x] Implement daily NSE Bhavcopy downloader: header-driven `sec_bhavdata_full_DDMMYYYY.csv` parser (OHLC, prev close, VWAP, trades, delivery qty/%) and `MTO_DDMMYYYY.DAT` delivery-report parser + merge; exact decimals, bars stamped at the 15:30 IST close, holidays surface as `NotFound`.
+  - [x] Implement broker REST historical bar loaders: Kite (`X-Kite-Version`, `api_key:access_token` auth) and Upstox v2 (`to`-before-`from` URL order, `|` key encoding), both behind `HistoricalBarSource`; a strict `parse_candles` decoder (loud failure on malformed candles).
+  - [x] Historical gap reconciliation: `missing_trading_days`, `missing_intraday_bars` (09:15–15:30 IST session model) and `reconcile_daily` / `reconcile_intraday`, which backfill **only** missing slots from the broker and are idempotent.
+  - [x] Implement DuckDB query views over Parquet directories: `DuckDbViews` generates `ticks` / `bars` views (`read_parquet(... hive_partitioning = true)`), verified against DuckDB 1.5 (exact `DECIMAL(18,4)`, `TIMESTAMPTZ`, partition pruning). The views are zero-copy SQL; the DuckDB C++ engine is intentionally **not** linked into the Rust build.
+- [x] **4.3 Live Tick Recorder Daemon (`honba-me-feed`)**
+  - [x] Implement `TickRecorder` actor with rolling memory buffers (flush at 100 000 ticks or every 60 s, plus on shutdown) and Zstd/Snappy compressed Parquet flushing on the blocking pool. Failed flushes retain and retry the batch with a bounded buffer (oldest dropped and counted); `attach_broadcast` subscribes it to a broadcast feed.
+
+> **Phase 4 verification:** `cargo test -p honba-me-feed -p honba-me-loaders` — lakehouse round-trips of every `Tick` kind, partition layout/IST-date boundaries, append + merged reads, scale rounding and overflow rejection, recorder size/interval/shutdown/failure paths, legacy migration, Bhavcopy/MTO/candle parsers, gap detection and idempotent backfill.
 
 ### Phase 5: StockSharp Indicator Library Port & Vectorized Compute (M4) — Week 11–12
 > **Porting StockSharp.Algo.Indicators (100+ Indicators) from C# to High-Performance Pure Rust**:
@@ -349,13 +333,7 @@ Each broker crate must provide a live async WebSocket connection (`tokio-tungste
 
 ### Phase 6: Intraday Signal Detectors & End-to-End Runtime Integration (M5) — Week 13–14
 - [x] **6.1 Intraday Signal Detectors (`honba-me-signals`)**
-  - [x] Refactor signal engine to consume `honba_core::Bar`.
-  - [x] Implement Intraday detectors: VWAP Cross, CPR Breakout, ORB (15m/30m), and Volume Surge.
-  - [x] Implement trade setup tagging (ATR-based Stop-Loss, Target 1, Target 2, Risk/Reward ratio).
-- [x] **6.2 End-to-End System Integration**
-  - [x] Connect `honba-me` live feeds directly to `honba-ya-actors::MarketDataActor`.
-  - [x] Validate live tick ingestion $\rightarrow$ price band enrichment $\rightarrow$ `honba-mon::RiskEngine` evaluation $\rightarrow$ broker execution.
-  - [x] Verify zero-lag streaming to `honba-kao` Web terminal chart via WebSocket.
+- [ ] **6.2 End-to-End System Integration**
 
 ---
 

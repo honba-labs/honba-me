@@ -1,12 +1,12 @@
-use honba_messages::{
-    AggressorSide, Exchange, InstrumentId, QuoteTick, TradeId, TradeTick, UnixNanos,
-};
-use honba_ports::{PortError, TickReader, TickRequest};
+use honba_core::{Exchange, InstrumentId};
+
+use crate::ports::{PortError, TickReader, TickRequest};
+use crate::wire::{AggressorSide, QuoteTick, TradeId, TradeTick, UnixNanos};
 
 use crate::InMemoryTickReader;
 
 fn id(s: &str) -> InstrumentId {
-    InstrumentId::new(s, Exchange::new("NSE"))
+    InstrumentId::new(Exchange::Nse, s)
 }
 
 fn ts(n: u64) -> UnixNanos {

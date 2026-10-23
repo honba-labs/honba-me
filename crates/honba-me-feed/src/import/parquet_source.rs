@@ -25,8 +25,10 @@ use arrow::record_batch::RecordBatch;
 use parquet::arrow::arrow_reader::{ParquetRecordBatchReader, ParquetRecordBatchReaderBuilder};
 use thiserror::Error;
 
-use honba_messages::{
-    Bar, BarAggregation, BarSpecification, BarType, InstrumentId, PriceType, UnixNanos,
+use honba_core::InstrumentId;
+
+use crate::wire::{
+    Bar, BarAggregation, BarSpecification, BarType, PriceType, UnixNanos,
 };
 
 use crate::dataset::{ColumnarSlice, ColumnarSliceBuilder, DatasetBuildError};

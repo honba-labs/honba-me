@@ -1,15 +1,15 @@
-use honba_engine::DataFeed;
-use honba_messages::{
-    Bar, BarAggregation, BarSpecification, BarType, Event, Exchange, InstrumentId, PriceType,
-    UnixNanos,
-};
+use honba_core::{Exchange, InstrumentId};
+
+use crate::dataset::DataFeed;
+use crate::ports::MarketEvent as Event;
+use crate::wire::{Bar, BarAggregation, BarSpecification, BarType, PriceType, UnixNanos};
 
 use crate::dataset::{
     ColumnarSlice, ColumnarSliceBuilder, Dataset, DatasetBuildError, DatasetFeed,
 };
 
 fn instrument(symbol: &str) -> InstrumentId {
-    InstrumentId::new(symbol, Exchange::new("NSE"))
+    InstrumentId::new(Exchange::Nse, symbol)
 }
 
 fn spec() -> BarSpecification {
@@ -274,7 +274,7 @@ fn from_slices_sorts_by_instrument_id() {
 
     let dataset = Dataset::from_slices(vec![tcs, reliance, infy]).expect("the instruments differ");
 
-    let order: Vec<&str> = dataset.instruments().map(|id| id.symbol()).collect();
+    let order: Vec<String> = dataset.instruments().map(|id| id.symbol.clone()).collect();
     assert_eq!(order, vec!["INFY", "RELIANCE", "TCS"]);
     assert_eq!(dataset.len(), 3);
     assert_eq!(dataset.bar_count(), 3);
@@ -381,7 +381,7 @@ fn a_feed_replays_every_bar_once_in_instrument_order() {
             panic!("the feed replays bars");
         };
         seen.push((
-            bar.bar_type().instrument_id().symbol().to_string(),
+            bar.bar_type().instrument_id().symbol.to_string(),
             bar.ts_event().as_u64(),
             bar.close(),
         ));
@@ -478,10 +478,10 @@ fn streamed_dataset_feed_replays_all_chunks_deterministically() {
         slice_with_closes("INFY", &timestamps, &closes_infy),
     ])
     .expect("valid")
-    .with_id(honba_messages::DatasetId::new("NSE:NIFTY50:1m:test_hash"));
+    .with_id(honba_core::DatasetId::new("NSE:NIFTY50:1m:test_hash"));
 
     assert_eq!(
-        ds.id().map(|id| id.as_str()),
+        ds.id().map(|id| id.0.as_str()),
         Some("NSE:NIFTY50:1m:test_hash")
     );
 

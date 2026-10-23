@@ -9,10 +9,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
-use honba_messages::{Bar, InstrumentId, QuoteTick, UnixNanos};
-use honba_ports::{PortResult, QuoteReader};
+use honba_core::InstrumentId;
 
 use crate::DatasetReader;
+use crate::ports::{PortResult, QuoteReader};
+use crate::wire::{Bar, QuoteTick, UnixNanos};
 
 /// Latest live quotes per instrument, with a [`DatasetReader`] fallback.
 #[derive(Debug)]

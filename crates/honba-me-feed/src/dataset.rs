@@ -7,19 +7,67 @@
 //! bars.
 //!
 //! [`DatasetFeed`] replays a dataset into the sync event kernel
-//! ([`honba_engine::DataFeed`]) in a fixed order, which is what makes a sweep's
+//! ([`DataFeed`]) in a fixed order, which is what makes a sweep's
 //! journals comparable across thread counts.
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use honba_engine::DataFeed;
-use honba_messages::{
-    Bar, BarSpecification, BarType, DatasetId, Event, InstrumentId, Message, UnixNanos,
-};
+use honba_core::{DatasetId, InstrumentId};
 use thiserror::Error;
 
 use crate::import::parquet_source::{ParquetBarSource, ParquetError};
+use crate::ports::MarketEvent;
+use crate::wire::{Bar, BarSpecification, BarType, UnixNanos};
+
+/// A bar event stamped with the run's init timestamp.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Message {
+    /// The event.
+    pub event: MarketEvent,
+    /// When this message was created during the run.
+    pub ts_init: UnixNanos,
+}
+
+impl Message {
+    /// Creates a message.
+    pub fn new(event: MarketEvent, ts_init: UnixNanos) -> Self {
+        Self { event, ts_init }
+    }
+
+    /// The event this message carries.
+    pub fn event(&self) -> &MarketEvent {
+        &self.event
+    }
+
+    /// Takes the event out of the message.
+    pub fn into_event(self) -> MarketEvent {
+        self.event
+    }
+
+    /// When this message was created during the run.
+    pub fn ts_init(&self) -> UnixNanos {
+        self.ts_init
+    }
+}
+
+/// Errors a [`DataFeed`] can return.
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+pub enum DataFeedError {
+    /// The feed could not be advanced.
+    #[error("data feed: {0}")]
+    Internal(String),
+}
+
+/// A synchronous source of replayed market events.
+///
+/// The kernel used to own this trait; it is local now so the dataset feeds
+/// stay independent of the (retired) engine crate. A feed yields events in a
+/// fixed order and reports exhaustion with `Ok(None)`.
+pub trait DataFeed {
+    /// The next event, or `None` once the feed is exhausted.
+    fn next(&mut self) -> Result<Option<Message>, DataFeedError>;
+}
 
 /// Immutable, columnar bars for one instrument, cheap to clone.
 ///
@@ -30,10 +78,11 @@ use crate::import::parquet_source::{ParquetBarSource, ParquetError};
 /// ([`DatasetBuildError`]) instead of storing them.
 ///
 /// ```
+/// use honba_core::{Exchange, InstrumentId};
 /// use honba_feed::{ColumnarSliceBuilder, Dataset};
-/// use honba_messages::{BarAggregation, BarSpecification, Exchange, InstrumentId, PriceType, UnixNanos};
+/// use honba_feed::wire::{BarAggregation, BarSpecification, PriceType, UnixNanos};
 ///
-/// let id = InstrumentId::new("TCS", Exchange::new("NSE"));
+/// let id = InstrumentId::new(Exchange::Nse, "TCS");
 /// let spec = BarSpecification::new(1, BarAggregation::Minute, PriceType::Last);
 /// let mut builder = ColumnarSliceBuilder::new(id.clone(), spec);
 /// builder.push(UnixNanos::from_u64(100), 10.0, 12.0, 9.0, 11.0, 500.0)?;
@@ -133,7 +182,7 @@ impl ColumnarSlice {
     /// Every bar as a kernel [`Message`], all stamped with `ts_init`.
     pub fn messages(&self, ts_init: UnixNanos) -> Vec<Message> {
         (0..self.len())
-            .map(|index| Message::new(Event::Bar(self.bar_at(index)), ts_init))
+            .map(|index| Message::new(MarketEvent::Bar(self.bar_at(index)), ts_init))
             .collect()
     }
 
@@ -241,7 +290,7 @@ impl StreamedDatasetFeed {
 }
 
 impl DataFeed for StreamedDatasetFeed {
-    fn next(&mut self) -> honba_engine::Result<Option<Message>> {
+    fn next(&mut self) -> Result<Option<Message>, DataFeedError> {
         while let Some(feed) = &mut self.current_feed {
             if let Some(msg) = feed.next()? {
                 return Ok(Some(msg));
@@ -456,18 +505,19 @@ struct Row {
 /// with `Arc<Dataset>` across the threads of a sweep.
 ///
 /// ```
+/// use honba_core::{Exchange, InstrumentId};
 /// use honba_feed::{ColumnarSliceBuilder, Dataset};
-/// use honba_messages::{BarAggregation, BarSpecification, Exchange, InstrumentId, PriceType, UnixNanos};
+/// use honba_feed::wire::{BarAggregation, BarSpecification, PriceType, UnixNanos};
 ///
 /// fn slice(symbol: &str, ts: u64) -> honba_feed::ColumnarSlice {
 ///     let spec = BarSpecification::new(1, BarAggregation::Minute, PriceType::Last);
-///     let mut builder = ColumnarSliceBuilder::new(InstrumentId::new(symbol, Exchange::new("NSE")), spec);
+///     let mut builder = ColumnarSliceBuilder::new(InstrumentId::new(Exchange::Nse, symbol), spec);
 ///     builder.push(UnixNanos::from_u64(ts), 1.0, 1.0, 1.0, 1.0, 1.0).unwrap();
 ///     builder.finish().unwrap()
 /// }
 ///
 /// let dataset = Dataset::from_slices(vec![slice("TCS", 2), slice("INFY", 1)])?;
-/// let order: Vec<&str> = dataset.instruments().map(|id| id.symbol()).collect();
+/// let order: Vec<&str> = dataset.instruments().map(|id| id.symbol.as_str()).collect();
 /// assert_eq!(order, vec!["INFY", "TCS"]);
 /// assert_eq!(dataset.bar_count(), 2);
 /// # Ok::<(), honba_feed::DatasetBuildError>(())
@@ -511,7 +561,7 @@ impl Dataset {
         id: Option<DatasetId>,
     ) -> Result<Dataset, DatasetBuildError> {
         let mut slices = slices;
-        slices.sort_by(|left, right| left.instrument().cmp(right.instrument()));
+        slices.sort_by(|left, right| crate::wire::instrument_cmp(left.instrument(), right.instrument()));
         for pair in slices.windows(2) {
             if pair[0].instrument() == pair[1].instrument() {
                 return Err(DatasetBuildError::DuplicateInstrument(
@@ -611,7 +661,7 @@ impl Dataset {
     pub fn slice(&self, instrument: &InstrumentId) -> Option<&ColumnarSlice> {
         self.0
             .slices
-            .binary_search_by(|slice| slice.instrument().cmp(instrument))
+            .binary_search_by(|slice| crate::wire::instrument_cmp(slice.instrument(), instrument))
             .ok()
             .map(|index| &self.0.slices[index])
     }
@@ -666,13 +716,13 @@ impl DatasetFeed {
 }
 
 impl DataFeed for DatasetFeed {
-    fn next(&mut self) -> honba_engine::Result<Option<Message>> {
+    fn next(&mut self) -> Result<Option<Message>, DataFeedError> {
         while self.current < self.slices.len() {
             let slice = &self.slices[self.current];
             if self.cursor < slice.len() {
                 let bar = slice.bar_at(self.cursor);
                 self.cursor += 1;
-                return Ok(Some(Message::new(Event::Bar(bar), self.ts_init)));
+                return Ok(Some(Message::new(MarketEvent::Bar(bar), self.ts_init)));
             }
             self.current += 1;
             self.cursor = 0;

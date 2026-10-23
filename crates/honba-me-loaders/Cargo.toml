@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Market data loaders for Honba: NSE Bhavcopy, broker REST historical bars, DuckDB lakehouse connector"
+description = "Market data loaders for Honba: NSE Bhavcopy, broker REST historical bars, DuckDB lakehouse views, gap backfill"
 
 [lib]
 name = "honba_loaders"
@@ -15,6 +15,7 @@ async-trait.workspace = true
 chrono.workspace = true
 csv.workspace = true
 honba-core.workspace = true
+honba-me-feed.workspace = true
 reqwest.workspace = true
 rust_decimal.workspace = true
 serde.workspace = true

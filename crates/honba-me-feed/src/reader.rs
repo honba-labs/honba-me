@@ -11,19 +11,19 @@
 //! every answer is deterministic: instruments come back in [`InstrumentId`]
 //! order and bars in ascending `ts_event`.
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::path::Path;
 
 use async_trait::async_trait;
-use honba_entities::{Currency, Instrument, InstrumentKind};
-use honba_messages::{Bar, Exchange, InstrumentId, QuoteTick, UnixNanos};
-use honba_ports::{
-    BarReader, BarRequest, DepthReader, DepthSnapshot, InstrumentMaster, PortError, PortResult,
-    QuoteReader,
-};
+use honba_core::{Currency, Exchange, InstrumentId, InstrumentKind};
 use thiserror::Error;
 
 use crate::dataset::{Dataset, DatasetBuildError};
+use crate::ports::{
+    BarReader, BarRequest, DepthReader, DepthSnapshot, InstrumentMaster, PortError, PortResult,
+    QuoteReader,
+};
+use crate::wire::{Bar, Instrument, QuoteTick, UnixNanos};
 
 /// Lot size of an instrument whose metadata was derived, not supplied.
 const DEFAULT_LOT_SIZE: f64 = 1.0;
@@ -48,7 +48,7 @@ pub enum ReaderError {
 #[derive(Clone, Debug)]
 pub struct DatasetReader {
     dataset: Dataset,
-    instruments: BTreeMap<InstrumentId, Instrument>,
+    instruments: HashMap<InstrumentId, Instrument>,
 }
 
 impl DatasetReader {
@@ -113,7 +113,10 @@ impl DatasetReader {
                 .to_owned();
             match stem.rsplit_once('.') {
                 Some((symbol, exchange)) if !symbol.is_empty() && !exchange.is_empty() => {
-                    files.push((InstrumentId::new(symbol, Exchange::new(exchange)), path));
+                    let exchange: Exchange = exchange.parse().map_err(|_| {
+                        ReaderError::FileName(file_name(&path))
+                    })?;
+                    files.push((InstrumentId::new(exchange, symbol), path));
                 }
                 _ => return Err(ReaderError::FileName(file_name(&path))),
             }
@@ -145,7 +148,9 @@ impl InstrumentMaster for DatasetReader {
     }
 
     async fn list_instruments(&self) -> PortResult<Vec<Instrument>> {
-        Ok(self.instruments.values().cloned().collect())
+        let mut instruments: Vec<Instrument> = self.instruments.values().cloned().collect();
+        instruments.sort_by(|a, b| crate::wire::instrument_cmp(a.id(), b.id()));
+        Ok(instruments)
     }
 }
 

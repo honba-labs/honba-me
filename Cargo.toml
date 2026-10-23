@@ -64,3 +64,7 @@ honba-signals    = { package = "honba-me-signals", path = "crates/honba-me-signa
 honba-market     = { package = "honba-me-market", path = "crates/honba-me-market" }
 honba-feed       = { package = "honba-me-feed", path = "crates/honba-me-feed" }
 honba-angelone   = { package = "honba-me-angelone", path = "crates/honba-me-angelone" }
+
+# Cross-repo: the analytics crate owns the performance-report types the
+# report writers serialize.
+honba-analytics  = { package = "honba-nou-analytics", path = "../honba-nou/crates/honba-nou-analytics" }

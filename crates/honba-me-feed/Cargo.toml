@@ -13,6 +13,7 @@ name = "honba_feed"
 [dependencies]
 honba-core.workspace = true
 honba-me-core.workspace = true
+honba-analytics.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
@@ -21,6 +22,7 @@ arrow.workspace = true
 parquet.workspace = true
 csv.workspace = true
 async-trait.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }

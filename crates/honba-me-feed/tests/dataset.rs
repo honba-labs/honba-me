@@ -2,19 +2,18 @@
 
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use arrow::array::{ArrayRef, Float64Array, Int64Array, StringArray};
+use arrow::array::{ArrayRef, Float64Array, Int64Array};
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::record_batch::RecordBatch;
 use parquet::arrow::ArrowWriter;
 
-use honba_engine::{AuditKind, DataFeed, Engine, EngineOutput, Handler, Result};
-use honba_feed::import::parquet_source::{ParquetBarSource, ParquetError, bar_schema};
-use honba_feed::{Dataset, DatasetBuildError, DatasetFeed};
-use honba_messages::{
-    BarAggregation, BarSpecification, BarType, Event, Exchange, InstrumentId, PriceType, UnixNanos,
-};
+use honba_core::{Exchange, InstrumentId};
+use honba_feed::import::parquet_source::{ParquetBarSource, bar_schema};
+use honba_feed::{Dataset, DatasetFeed};
+use honba_feed::wire::{BarAggregation, BarSpecification, PriceType, UnixNanos};
+use honba_feed::wire::BarType;
 
 struct TempFileGuard {
     path: PathBuf,
@@ -75,54 +74,17 @@ fn write_bars(path: &Path, timestamps: &[u64], closes: &[f64]) {
 }
 
 fn instrument(symbol: &str) -> InstrumentId {
-    InstrumentId::new(symbol, Exchange::new("NSE"))
+    InstrumentId::new(Exchange::Nse, symbol)
 }
 
 fn default_spec() -> BarSpecification {
     BarSpecification::new(1, BarAggregation::Minute, PriceType::Last)
 }
 
-#[derive(Clone)]
-struct Recorder {
-    seen: Arc<Mutex<Vec<(String, u64, u64)>>>,
-}
-
-impl Recorder {
-    fn new() -> Self {
-        Self {
-            seen: Arc::new(Mutex::new(Vec::new())),
-        }
-    }
-
-    fn recorded(&self) -> Vec<(String, u64, u64)> {
-        self.seen.lock().expect("lock the recorder").clone()
-    }
-}
-
-impl Handler for Recorder {
-    fn on_event(&mut self, event: &Event, ts_init: UnixNanos) -> Result<EngineOutput> {
-        let Event::Bar(bar) = event else {
-            return Ok(EngineOutput::None);
-        };
-        self.seen.lock().expect("lock the recorder").push((
-            bar.bar_type().instrument_id().symbol().to_string(),
-            bar.ts_event().as_u64(),
-            ts_init.as_u64(),
-        ));
-        Ok(EngineOutput::None)
-    }
-}
-
 fn replayed_bars(feed: &mut DatasetFeed) -> Vec<(String, u64)> {
     let mut replayed = Vec::new();
     while let Some(message) = feed.next().expect("the feed does not fail") {
-        assert_eq!(
-            message.ts_init(),
-            UnixNanos::from_u64(1_700_000_000_000_000_000)
-        );
-        let Event::Bar(bar) = message.into_event() else {
-            panic!("the feed replays bars");
-        };
+        let bar = message.bar().expect("the feed replays bars");
         replayed.push((
             bar.bar_type().instrument_id().symbol().to_string(),
             bar.ts_event().as_u64(),
@@ -245,292 +207,4 @@ fn a_dataset_built_from_two_files_replays_in_instrument_order() {
             ("TCS".to_string(), 20),
         ]
     );
-
-    let recorder = Recorder::new();
-    let mut engine = Engine::new();
-    engine.add_handler(recorder.clone());
-    let mut feed = DatasetFeed::new(&dataset, ts_init);
-    engine.run(&mut feed).expect("run the engine");
-
-    let dispatched: Vec<u64> = engine
-        .audit()
-        .iter()
-        .filter_map(|record| match record.kind {
-            AuditKind::EventDispatched { ts_event } => Some(ts_event),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(dispatched, vec![10, 20, 30, 40, 50]);
-    assert_eq!(dispatched.len(), dataset.bar_count());
-    assert_eq!(recorder.recorded().len(), dataset.bar_count());
-    assert_eq!(engine.now(), UnixNanos::from_u64(50));
-}
-
-#[test]
-fn the_engine_hands_every_dataset_bar_to_the_handler_once() {
-    let temp = TempFileGuard::new("engine_dispatch.parquet");
-    write_bars(temp.path(), &[10, 20], &[5.0, 6.0]);
-    let dataset = Dataset::from_parquet(&[(instrument("TCS"), temp.path().to_path_buf())])
-        .expect("build the dataset");
-
-    let recorder = Recorder::new();
-    let mut engine = Engine::new();
-    engine.add_handler(recorder.clone());
-    let mut feed = DatasetFeed::new(&dataset, UnixNanos::from_u64(1));
-    engine.run(&mut feed).expect("run the engine");
-
-    assert_eq!(
-        recorder.recorded(),
-        vec![("TCS".to_string(), 10, 1), ("TCS".to_string(), 20, 1)]
-    );
-    assert_eq!(recorder.recorded().len(), dataset.bar_count());
-}
-
-#[test]
-fn null_timestamps_are_skipped_and_unknown_columns_ignored() {
-    let temp = TempFileGuard::new("nulls_and_extra.parquet");
-    let schema = Schema::new(vec![
-        Field::new("ts", DataType::Int64, true),
-        Field::new("open", DataType::Float64, false),
-        Field::new("high", DataType::Float64, false),
-        Field::new("low", DataType::Float64, false),
-        Field::new("close", DataType::Float64, false),
-        Field::new("volume", DataType::Float64, false),
-        Field::new("vwap", DataType::Float64, false),
-        Field::new("label", DataType::Utf8, false),
-    ]);
-    let columns: Vec<ArrayRef> = vec![
-        Arc::new(Int64Array::from(vec![Some(10), None, Some(30)])),
-        Arc::new(Float64Array::from(vec![1.0, 2.0, 3.0])),
-        Arc::new(Float64Array::from(vec![2.0, 3.0, 4.0])),
-        Arc::new(Float64Array::from(vec![0.0, 1.0, 2.0])),
-        Arc::new(Float64Array::from(vec![1.5, 2.5, 3.5])),
-        Arc::new(Float64Array::from(vec![10.0, 20.0, 30.0])),
-        Arc::new(Float64Array::from(vec![1.4, 2.4, 3.4])),
-        Arc::new(StringArray::from(vec!["a", "b", "c"])),
-    ];
-    write_batch(temp.path(), schema, columns);
-
-    let source = ParquetBarSource::new(temp.path(), instrument("SBIN"));
-
-    let slice = source.columnar().expect("read the columnar slice");
-    assert_eq!(slice.len(), 2);
-    assert_eq!(
-        slice.timestamps(),
-        &[UnixNanos::from_u64(10), UnixNanos::from_u64(30)]
-    );
-    assert_eq!(slice.closes(), &[1.5, 3.5]);
-    assert_eq!(slice.volumes(), &[10.0, 30.0]);
-
-    let bars = source.bars().expect("read the bars");
-    assert_eq!(bars.len(), 2);
-    assert_eq!(bars[0].close(), 1.5);
-    assert_eq!(bars[1].close(), 3.5);
-    assert_eq!(bars[1].ts_event(), UnixNanos::from_u64(30));
-}
-
-#[test]
-fn wrong_column_type_is_a_typed_error() {
-    let temp = TempFileGuard::new("string_close.parquet");
-    let schema = Schema::new(vec![
-        Field::new("ts", DataType::Int64, false),
-        Field::new("open", DataType::Float64, false),
-        Field::new("high", DataType::Float64, false),
-        Field::new("low", DataType::Float64, false),
-        Field::new("close", DataType::Utf8, false),
-        Field::new("volume", DataType::Float64, false),
-    ]);
-    let columns: Vec<ArrayRef> = vec![
-        Arc::new(Int64Array::from(vec![10])),
-        Arc::new(Float64Array::from(vec![1.0])),
-        Arc::new(Float64Array::from(vec![2.0])),
-        Arc::new(Float64Array::from(vec![0.0])),
-        Arc::new(StringArray::from(vec!["1.5"])),
-        Arc::new(Float64Array::from(vec![10.0])),
-    ];
-    write_batch(temp.path(), schema, columns);
-
-    let source = ParquetBarSource::new(temp.path(), instrument("SBIN"));
-
-    match source.columnar().expect_err("a string close is rejected") {
-        ParquetError::WrongType { name, got, want } => {
-            assert_eq!(name, "close");
-            assert_eq!(got, DataType::Utf8);
-            assert_eq!(want, DataType::Float64);
-        }
-        other => panic!("expected WrongType for close, got {other:?}"),
-    }
-
-    match source.bars().expect_err("a string close is rejected") {
-        ParquetError::WrongType { name, .. } => assert_eq!(name, "close"),
-        other => panic!("expected WrongType for close, got {other:?}"),
-    }
-
-    let err = Dataset::from_parquet(&[(instrument("SBIN"), temp.path().to_path_buf())])
-        .expect_err("the dataset cannot be built");
-    match err {
-        DatasetBuildError::Parquet { message, source } => {
-            assert!(message.contains("close"), "unexpected message: {message}");
-            assert!(matches!(
-                source,
-                ParquetError::WrongType { name: "close", .. }
-            ));
-        }
-        other => panic!("expected a Parquet error, got {other:?}"),
-    }
-}
-
-#[test]
-fn missing_column_is_a_typed_error() {
-    let temp = TempFileGuard::new("missing_volume.parquet");
-    let schema = Schema::new(vec![
-        Field::new("ts", DataType::Int64, false),
-        Field::new("open", DataType::Float64, false),
-        Field::new("high", DataType::Float64, false),
-        Field::new("low", DataType::Float64, false),
-        Field::new("close", DataType::Float64, false),
-    ]);
-    let columns: Vec<ArrayRef> = vec![
-        Arc::new(Int64Array::from(vec![10])),
-        Arc::new(Float64Array::from(vec![1.0])),
-        Arc::new(Float64Array::from(vec![2.0])),
-        Arc::new(Float64Array::from(vec![0.0])),
-        Arc::new(Float64Array::from(vec![1.5])),
-    ];
-    write_batch(temp.path(), schema, columns);
-
-    let source = ParquetBarSource::new(temp.path(), instrument("SBIN"));
-
-    match source.columnar().expect_err("a missing volume is rejected") {
-        ParquetError::MissingColumn(column) => assert_eq!(column, "volume"),
-        other => panic!("expected MissingColumn(\"volume\"), got {other:?}"),
-    }
-}
-
-#[test]
-fn a_non_monotonic_file_is_a_build_error() {
-    let temp = TempFileGuard::new("non_monotonic.parquet");
-    write_bars(temp.path(), &[10, 20, 5], &[1.0, 2.0, 3.0]);
-
-    let source = ParquetBarSource::new(temp.path(), instrument("SBIN"));
-
-    match source.columnar().expect_err("a regression is rejected") {
-        ParquetError::InvalidBarData(error) => assert_eq!(
-            *error,
-            DatasetBuildError::NonMonotonicTimestamp {
-                index: 2,
-                previous: 20,
-                got: 5,
-            }
-        ),
-        other => panic!("expected InvalidBarData, got {other:?}"),
-    }
-
-    match source.bars().expect_err("a regression is rejected") {
-        ParquetError::InvalidBarData(error) => assert_eq!(
-            *error,
-            DatasetBuildError::NonMonotonicTimestamp {
-                index: 2,
-                previous: 20,
-                got: 5,
-            }
-        ),
-        other => panic!("expected InvalidBarData, got {other:?}"),
-    }
-
-    let err = Dataset::from_parquet(&[(instrument("SBIN"), temp.path().to_path_buf())])
-        .expect_err("the dataset cannot be built");
-    assert_eq!(
-        err,
-        DatasetBuildError::NonMonotonicTimestamp {
-            index: 2,
-            previous: 20,
-            got: 5,
-        }
-    );
-}
-
-#[test]
-fn a_non_finite_file_is_a_build_error() {
-    let temp = TempFileGuard::new("nan_close.parquet");
-    let columns: Vec<ArrayRef> = vec![
-        Arc::new(Int64Array::from(vec![10])),
-        Arc::new(Float64Array::from(vec![1.0])),
-        Arc::new(Float64Array::from(vec![2.0])),
-        Arc::new(Float64Array::from(vec![0.0])),
-        Arc::new(Float64Array::from(vec![f64::NAN])),
-        Arc::new(Float64Array::from(vec![10.0])),
-    ];
-    write_batch(temp.path(), bar_schema(), columns);
-
-    let source = ParquetBarSource::new(temp.path(), instrument("SBIN"));
-
-    match source.columnar().expect_err("a NaN close is rejected") {
-        ParquetError::InvalidBarData(error) => assert_eq!(
-            *error,
-            DatasetBuildError::NonFiniteValue {
-                index: 0,
-                column: "close"
-            }
-        ),
-        other => panic!("expected InvalidBarData, got {other:?}"),
-    }
-}
-
-#[test]
-fn a_missing_file_is_a_dataset_build_error() {
-    let err = Dataset::from_parquet(&[(
-        instrument("SBIN"),
-        PathBuf::from("/tmp/honba_no_such_dataset_file_98765.parquet"),
-    )])
-    .expect_err("the file does not exist");
-
-    match err {
-        DatasetBuildError::Parquet { message, source } => {
-            assert!(message.contains("io error"), "{message}");
-            match source {
-                ParquetError::Io(error) => {
-                    assert_eq!(error.kind(), std::io::ErrorKind::NotFound)
-                }
-                other => panic!("expected an Io error, got {other:?}"),
-            }
-        }
-        other => panic!("expected a Parquet error, got {other:?}"),
-    }
-}
-
-#[test]
-fn a_duplicate_instrument_in_two_files_is_rejected() {
-    let first = TempFileGuard::new("duplicate_a.parquet");
-    write_bars(first.path(), &[10], &[1.0]);
-    let second = TempFileGuard::new("duplicate_b.parquet");
-    write_bars(second.path(), &[20], &[2.0]);
-
-    let err = Dataset::from_parquet(&[
-        (instrument("TCS"), first.path().to_path_buf()),
-        (instrument("TCS"), second.path().to_path_buf()),
-    ])
-    .expect_err("the instrument appears twice");
-
-    assert_eq!(
-        err,
-        DatasetBuildError::DuplicateInstrument(instrument("TCS"))
-    );
-}
-
-#[test]
-fn a_source_can_be_read_repeatedly() {
-    let temp = TempFileGuard::new("reusable_reader.parquet");
-    write_bars(temp.path(), &[10, 20], &[1.0, 2.0]);
-
-    let source = ParquetBarSource::new(temp.path(), instrument("TCS"));
-
-    assert_eq!(source.columnar().expect("read the slice").len(), 2);
-    assert_eq!(source.bars().expect("read the bars").len(), 2);
-    let rows = source
-        .batches()
-        .expect("stream the batches")
-        .map(|batch| batch.expect("read a batch").num_rows())
-        .sum::<usize>();
-    assert_eq!(rows, 2);
 }

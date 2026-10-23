@@ -12,13 +12,13 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use chrono::{FixedOffset, NaiveDate, NaiveDateTime, NaiveTime};
-use honba_messages::{
-    Bar, BarAggregation, BarSpecification, BarType, Exchange, InstrumentId, PriceType, UnixNanos,
-};
-use honba_ports::{
+use honba_core::{Exchange, InstrumentId};
+use thiserror::Error;
+
+use crate::ports::{
     ConnectorState, MarketDataConnector, MarketEvent, PortResult, Subscription, SubscriptionParams,
 };
-use thiserror::Error;
+use crate::wire::{Bar, BarAggregation, BarSpecification, BarType, PriceType, UnixNanos};
 
 /// A failure opening, reading or decoding a bhavcopy file.
 ///
@@ -193,7 +193,7 @@ fn parse(csv: &mut impl BufRead, exchange: &Exchange) -> Result<Vec<MarketEvent>
         };
 
         let bar_type = BarType::new(
-            InstrumentId::new(symbol, exchange.clone()),
+            InstrumentId::new(*exchange, symbol),
             BarSpecification::new(1, BarAggregation::Day, PriceType::Last),
         );
         let high = hi.max(op).max(cl);

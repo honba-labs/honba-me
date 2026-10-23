@@ -1,15 +1,14 @@
 //! Unit tests for `DatasetReader`: the two read ports over an in-memory dataset.
 
-use honba_entities::{Currency, Instrument, InstrumentKind};
-use honba_messages::{
-    BarAggregation, BarSpecification, Exchange, InstrumentId, PriceType, UnixNanos,
-};
-use honba_ports::{BarReader, BarRequest, DepthReader, InstrumentMaster, PortError, QuoteReader};
+use honba_core::{Currency, Exchange, InstrumentId, InstrumentKind};
+
+use crate::ports::{BarReader, BarRequest, DepthReader, InstrumentMaster, PortError, QuoteReader};
+use crate::wire::{BarAggregation, BarSpecification, Instrument, PriceType, UnixNanos};
 
 use crate::{ColumnarSliceBuilder, Dataset, DatasetReader};
 
 fn id(symbol: &str) -> InstrumentId {
-    InstrumentId::new(symbol, Exchange::new("NSE"))
+    InstrumentId::new(Exchange::Nse, symbol)
 }
 
 fn minute() -> BarSpecification {
@@ -45,14 +44,14 @@ fn request(symbol: &str, from: Option<u64>, to: Option<u64>) -> BarRequest {
     BarRequest::new(id(symbol), minute(), from.map(ts), to.map(ts)).unwrap()
 }
 
-fn stamps(bars: &[honba_messages::Bar]) -> Vec<u64> {
+fn stamps(bars: &[crate::wire::Bar]) -> Vec<u64> {
     bars.iter().map(|b| b.ts_event().as_u64()).collect()
 }
 
 #[tokio::test]
 async fn listing_is_complete_and_ordered_by_instrument_id() {
     let listed = reader().list_instruments().await.unwrap();
-    let ids: Vec<&str> = listed.iter().map(|i| i.id().symbol()).collect();
+    let ids: Vec<String> = listed.iter().map(|i| i.id().symbol.clone()).collect();
     assert_eq!(ids, vec!["INFY", "TCS"]);
 }
 

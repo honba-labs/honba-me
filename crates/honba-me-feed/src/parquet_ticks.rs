@@ -26,15 +26,16 @@
 
 use std::fs::File;
 use std::path::Path;
+use std::str::FromStr;
 
 use arrow::array::{Array, ArrayRef, Float64Array, Int64Array, StringArray};
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::record_batch::RecordBatch;
 use async_trait::async_trait;
-use honba_messages::{
-    AggressorSide, Exchange, InstrumentId, QuoteTick, TradeId, TradeTick, UnixNanos,
-};
-use honba_ports::{PortError, PortResult, TickReader, TickRequest};
+use honba_core::{Exchange, InstrumentId};
+
+use crate::ports::{PortError, PortResult, TickReader, TickRequest};
+use crate::wire::{AggressorSide, QuoteTick, TradeId, TradeTick, UnixNanos};
 use parquet::arrow::ArrowWriter;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use thiserror::Error;
@@ -141,6 +142,11 @@ impl ParquetTickStore {
         (self.quotes.len(), self.trades.len())
     }
 
+    /// Borrowed quotes and trades, for the canonical bridge in [`crate::canonical`].
+    pub(crate) fn raw(&self) -> (&[QuoteTick], &[TradeTick]) {
+        (&self.quotes, &self.trades)
+    }
+
     /// Returns `true` when the store holds no ticks at all.
     pub fn is_empty(&self) -> bool {
         self.quotes.is_empty() && self.trades.is_empty()
@@ -157,7 +163,7 @@ impl ParquetTickStore {
 }
 
 fn in_range(t: UnixNanos, request: &TickRequest) -> bool {
-    request.from().map_or(true, |f| t >= f) && request.to().map_or(true, |e| t < e)
+    request.from().is_none_or(|f| t >= f) && request.to().is_none_or(|e| t < e)
 }
 
 #[async_trait]
@@ -215,8 +221,8 @@ pub fn write_tick_file(
 
     for q in quotes {
         kinds.push("quote");
-        symbols.push(q.instrument_id().symbol());
-        exchanges.push(q.instrument_id().exchange().as_str());
+        symbols.push(q.instrument_id().symbol.clone());
+        exchanges.push(exchange_str(q.instrument_id().exchange));
         ts_events.push(q.ts_event().as_u64() as i64);
         ts_inits.push(Some(q.ts_init().as_u64() as i64));
         bid_prices.push(Some(q.bid_price()));
@@ -230,8 +236,8 @@ pub fn write_tick_file(
     }
     for t in trades {
         kinds.push("trade");
-        symbols.push(t.instrument_id().symbol());
-        exchanges.push(t.instrument_id().exchange().as_str());
+        symbols.push(t.instrument_id().symbol.clone());
+        exchanges.push(exchange_str(t.instrument_id().exchange));
         ts_events.push(t.ts_event().as_u64() as i64);
         ts_inits.push(Some(t.ts_init().as_u64() as i64));
         bid_prices.push(None);
@@ -251,6 +257,8 @@ pub fn write_tick_file(
         |values: Vec<Option<f64>>| -> ArrayRef { std::sync::Arc::new(Float64Array::from(values)) };
     let strings =
         |values: Vec<&str>| -> ArrayRef { std::sync::Arc::new(StringArray::from(values)) };
+    let owned_strings =
+        |values: Vec<String>| -> ArrayRef { std::sync::Arc::new(StringArray::from_iter_values(values)) };
     let opt_strings =
         |values: Vec<Option<&str>>| -> ArrayRef { std::sync::Arc::new(StringArray::from(values)) };
     let opt_owned = |values: Vec<Option<String>>| -> ArrayRef {
@@ -259,7 +267,7 @@ pub fn write_tick_file(
 
     let columns: Vec<ArrayRef> = vec![
         strings(kinds),
-        strings(symbols),
+        owned_strings(symbols),
         strings(exchanges),
         ints(ts_events),
         opt_ints(ts_inits),
@@ -278,6 +286,18 @@ pub fn write_tick_file(
     writer.write(&batch)?;
     writer.close()?;
     Ok(())
+}
+
+/// The stored spelling of an exchange (`NSE`/`BSE`/`MCX`), via `Display`.
+///
+/// `honba_core::Exchange` has only three variants, so a `&'static str` per
+/// variant avoids an allocation in the hot write path.
+fn exchange_str(exchange: Exchange) -> &'static str {
+    match exchange {
+        Exchange::Nse => "NSE",
+        Exchange::Bse => "BSE",
+        Exchange::Mcx => "MCX",
+    }
 }
 
 /// The stored spelling of an aggressor side: its serde name, so the column and the wire agree
@@ -398,10 +418,13 @@ fn append_batch(
         };
 
     for row in 0..batch.num_rows() {
-        let instrument = InstrumentId::new(
-            symbols.value(row).to_string(),
-            Exchange::new(exchanges.value(row).to_string()),
-        );
+        let exchange = Exchange::from_str(exchanges.value(row)).map_err(|_| {
+            bad(
+                row,
+                format!("{} is not a known exchange", exchanges.value(row)),
+            )
+        })?;
+        let instrument = InstrumentId::new(exchange, symbols.value(row).to_string());
         let wire_instrument = serde_json::to_value(&instrument).expect("an instrument serializes");
         let ts_event = UnixNanos::from_u64(ts_events.value(row) as u64);
         let ts_init = if ts_inits.is_null(row) {

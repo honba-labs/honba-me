@@ -7,9 +7,9 @@ use std::sync::Arc;
 use arrow::array::{ArrayRef, Float64Array, StringArray};
 use arrow::record_batch::RecordBatch;
 use chrono::NaiveDate;
-use honba_entities::OptionType;
-use honba_messages::{Exchange, InstrumentId};
-use honba_ports::InstrumentMaster;
+use honba_core::{Exchange, InstrumentId, OptionType};
+
+use crate::ports::InstrumentMaster;
 use parquet::arrow::ArrowWriter;
 
 use crate::instruments::{CatalogInstrumentMaster, snapshot_schema};
@@ -139,7 +139,7 @@ fn write_snapshot(root: &Path, date: &str, rows: &[Row]) {
 }
 
 fn id(symbol: &str) -> InstrumentId {
-    InstrumentId::new(symbol, Exchange::new("NSE"))
+    InstrumentId::new(Exchange::Nse, symbol)
 }
 
 fn date(year: i32, month: u32, day: u32) -> NaiveDate {

@@ -33,9 +33,10 @@ use arrow::datatypes::{DataType, Field, Schema};
 use arrow::record_batch::RecordBatch;
 use async_trait::async_trait;
 use chrono::NaiveDate;
-use honba_entities::{Currency, Instrument, InstrumentKind, OptionType};
-use honba_messages::{Exchange, InstrumentId};
-use honba_ports::{DatedInstrument, InstrumentMaster, PortError, PortResult};
+use honba_core::{Currency, Exchange, InstrumentId, InstrumentKind, OptionType};
+
+use crate::ports::{DatedInstrument, InstrumentMaster, PortError, PortResult};
+use crate::wire::Instrument;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use thiserror::Error;
 
@@ -286,7 +287,10 @@ fn append_batch(
         let expiry = optional(&expiries, row, |value| parse_date(value, "expiry"))?;
         let option_type = optional(&option_types, row, parse_option_type)?;
         let instrument = Instrument::new(
-            InstrumentId::new(symbols.value(row), Exchange::new(exchanges.value(row))),
+            InstrumentId::new(
+                parse_exchange(exchanges.value(row))?,
+                symbols.value(row),
+            ),
             parse_kind(kinds.value(row))?,
             parse_currency(currencies.value(row))?,
             lot_sizes.value(row),
@@ -376,11 +380,27 @@ fn parse_kind(value: &str) -> Result<InstrumentKind, CatalogError> {
 }
 
 fn parse_currency(value: &str) -> Result<Currency, CatalogError> {
-    from_json(value, "currency")
+    // `Currency`'s derived (de)serialization expects its Rust spelling
+    // ("Inr"), not the stored ISO code ("INR"); `from_code` is the
+    // case-insensitive ISO-4217 parser `honba_core` provides for this.
+    Currency::from_code(value).map_err(|_| CatalogError::UnknownValue {
+        column: "currency",
+        value: value.to_string(),
+    })
 }
 
 fn parse_option_type(value: &str) -> Result<OptionType, CatalogError> {
-    from_json(value, "option_type")
+    // NSE/BSE F&O conventions spell these "CE"/"PE", not `OptionType`'s
+    // derived snake_case ("call"/"put"); try the exchange alias first.
+    match value.to_uppercase().as_str() {
+        "CE" => Ok(OptionType::Call),
+        "PE" => Ok(OptionType::Put),
+        _ => from_json(value, "option_type"),
+    }
+}
+
+fn parse_exchange(value: &str) -> Result<Exchange, CatalogError> {
+    from_json(value, "exchange")
 }
 
 /// Deserializes an enum from its wire spelling, reusing the entity's serde

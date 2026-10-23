@@ -2,8 +2,9 @@
 //! whose ticks the caller already has (ADR 0030).
 
 use async_trait::async_trait;
-use honba_messages::{QuoteTick, TradeTick, UnixNanos};
-use honba_ports::{PortError, PortResult, TickReader, TickRequest};
+
+use crate::ports::{PortError, PortResult, TickReader, TickRequest};
+use crate::wire::{QuoteTick, TradeTick, UnixNanos};
 
 /// Quote and trade ticks held in memory, sorted by `ts_event` (stable for ties).
 ///
@@ -58,7 +59,7 @@ impl InMemoryTickReader {
 }
 
 fn in_range(t: UnixNanos, request: &TickRequest) -> bool {
-    request.from().map_or(true, |f| t >= f) && request.to().map_or(true, |e| t < e)
+    request.from().is_none_or(|f| t >= f) && request.to().is_none_or(|e| t < e)
 }
 
 #[async_trait]

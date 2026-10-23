@@ -2,16 +2,15 @@
 
 use std::sync::Arc;
 
-use honba_messages::{
-    Bar, BarAggregation, BarSpecification, BarType, Exchange, InstrumentId, PriceType, QuoteTick,
-    UnixNanos,
-};
-use honba_ports::QuoteReader;
+use honba_core::{Exchange, InstrumentId};
+
+use crate::ports::QuoteReader;
+use crate::wire::{Bar, BarAggregation, BarSpecification, BarType, PriceType, QuoteTick, UnixNanos};
 
 use crate::{ColumnarSliceBuilder, Dataset, DatasetReader, LiveQuoteStore};
 
 fn id() -> InstrumentId {
-    InstrumentId::new("TCS", Exchange::new("NSE"))
+    InstrumentId::new(Exchange::Nse, "TCS")
 }
 
 fn ts(n: u64) -> UnixNanos {

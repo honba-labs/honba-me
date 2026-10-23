@@ -2,8 +2,10 @@
 
 use std::io::BufReader;
 
-use honba_messages::{BarAggregation, Exchange, PriceType};
-use honba_ports::{ConnectorState, MarketDataConnector, MarketEvent, SubscriptionParams};
+use honba_core::Exchange;
+
+use crate::ports::{ConnectorState, MarketDataConnector, MarketEvent, SubscriptionParams};
+use crate::wire::{BarAggregation, PriceType};
 
 use crate::bhavcopy::BhavcopyConnector;
 
@@ -19,11 +21,11 @@ RELIANCE, EQ, 01-Oct-2024, 2895.00, 2900.00, 2950.00, 2890.00, 2940.00, 2940.00,
 TCS, EQ, 01-Oct-2024, 4190.00, 4200.00, 4250.00, 4180.00, 4230.00, 4230.00, 4210.00, 3000000, 126300.00, 90000, 1500000, 50.00\n";
 
 async fn connector(csv: &str) -> BhavcopyConnector {
-    BhavcopyConnector::from_csv(BufReader::new(csv.as_bytes()), Exchange::new("NSE"))
+    BhavcopyConnector::from_csv(BufReader::new(csv.as_bytes()), Exchange::Nse)
         .expect("fixture parses")
 }
 
-async fn drain_all(connector: &mut BhavcopyConnector) -> Vec<honba_messages::Bar> {
+async fn drain_all(connector: &mut BhavcopyConnector) -> Vec<crate::wire::Bar> {
     connector
         .subscribe(SubscriptionParams::new(vec![]))
         .await
@@ -44,7 +46,7 @@ async fn bhavcopy_connector_parses_fixture() {
 
         let reliance = bars
             .iter()
-            .find(|b| b.bar_type().instrument_id().symbol() == "RELIANCE")
+            .find(|b| b.bar_type().instrument_id().symbol == "RELIANCE")
             .expect("RELIANCE present");
         assert_eq!(reliance.open(), 2900.0);
         assert_eq!(reliance.high(), 2950.0);
@@ -54,7 +56,7 @@ async fn bhavcopy_connector_parses_fixture() {
 
         let tcs = bars
             .iter()
-            .find(|b| b.bar_type().instrument_id().symbol() == "TCS")
+            .find(|b| b.bar_type().instrument_id().symbol == "TCS")
             .expect("TCS present");
         assert_eq!(tcs.open(), 4200.0);
         assert_eq!(tcs.high(), 4250.0);
@@ -66,7 +68,7 @@ async fn bhavcopy_connector_parses_fixture() {
         assert_eq!(spec.aggregation(), BarAggregation::Day);
         assert_eq!(spec.price_type(), PriceType::Last);
         assert_eq!(
-            reliance.bar_type().instrument_id().exchange().as_str(),
+            reliance.bar_type().instrument_id().exchange.as_str(),
             "NSE"
         );
     }

@@ -3,10 +3,10 @@ use std::sync::Arc;
 
 use arrow::array::{ArrayRef, Float64Array, Int64Array, StringArray};
 use arrow::record_batch::RecordBatch;
-use honba_messages::{
-    AggressorSide, Exchange, InstrumentId, QuoteTick, TradeId, TradeTick, UnixNanos,
-};
-use honba_ports::{PortError, TickReader, TickRequest};
+use honba_core::{Exchange, InstrumentId};
+
+use crate::ports::{PortError, TickReader, TickRequest};
+use crate::wire::{AggressorSide, QuoteTick, TradeId, TradeTick, UnixNanos};
 use parquet::arrow::ArrowWriter;
 
 use crate::parquet_ticks::{ParquetTickStore, TICK_DIR, tick_schema, write_tick_file};
@@ -38,7 +38,7 @@ impl Drop for TempDir {
 }
 
 fn id(s: &str) -> InstrumentId {
-    InstrumentId::new(s, Exchange::new("NSE"))
+    InstrumentId::new(Exchange::Nse, s)
 }
 
 fn ts(n: u64) -> UnixNanos {

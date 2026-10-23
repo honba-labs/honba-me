@@ -8,12 +8,13 @@ use std::sync::Arc;
 
 use arrow::array::{ArrayRef, Float64Array, Int64Array};
 use arrow::record_batch::RecordBatch;
+use honba_core::{Exchange, InstrumentId};
 use honba_feed::import::parquet_source::bar_schema;
-use honba_feed::{DatasetReader, ReaderError};
-use honba_messages::{
-    BarAggregation, BarSpecification, Exchange, InstrumentId, PriceType, UnixNanos,
+use honba_feed::ports::{
+    BarReader, BarRequest, DepthReader, InstrumentMaster, PortError, QuoteReader,
 };
-use honba_ports::{BarReader, BarRequest, DepthReader, InstrumentMaster, PortError, QuoteReader};
+use honba_feed::wire::{BarAggregation, BarSpecification, PriceType, UnixNanos};
+use honba_feed::{DatasetReader, ReaderError};
 use parquet::arrow::ArrowWriter;
 
 struct TempDir(PathBuf);
@@ -77,7 +78,9 @@ async fn a_data_directory_lists_its_instruments_in_id_order() {
         .iter()
         .map(|i| i.id().to_string())
         .collect();
-    assert_eq!(ids, vec!["INFY.NSE", "TCS.NSE"]);
+    // honba_core::InstrumentId displays as "EXCHANGE:SYMBOL" (not "SYMBOL.EXCHANGE",
+    // the legacy format); same exchange here, so symbol order is still what's checked.
+    assert_eq!(ids, vec!["NSE:INFY", "NSE:TCS"]);
 }
 
 #[tokio::test]
@@ -85,7 +88,7 @@ async fn bars_are_read_back_from_parquet_with_the_requested_range() {
     let dir = fixture("bars");
     let reader = DatasetReader::from_parquet_dir(&dir.0).unwrap();
     let spec = BarSpecification::new(1, BarAggregation::Minute, PriceType::Last);
-    let id = InstrumentId::new("TCS", Exchange::new("NSE"));
+    let id = InstrumentId::new(Exchange::Nse, "TCS");
     let req = BarRequest::new(id, spec, Some(UnixNanos::from_u64(20)), None).unwrap();
     let bars = reader.read_bars(&req).await.unwrap();
     let stamps: Vec<u64> = bars.iter().map(|b| b.ts_event().as_u64()).collect();
@@ -126,7 +129,7 @@ fn a_corrupt_file_is_a_dataset_error() {
 async fn quotes_and_depth_are_served_from_a_parquet_directory() {
     let dir = fixture("quotes");
     let reader = DatasetReader::from_parquet_dir(&dir.0).unwrap();
-    let id = InstrumentId::new("TCS", Exchange::new("NSE"));
+    let id = InstrumentId::new(Exchange::Nse, "TCS");
     let quote = reader.read_quote(&id, None).await.unwrap().unwrap();
     assert_eq!(quote.bid_price(), 102.0);
     assert_eq!(quote.ts_event(), UnixNanos::from_u64(30));
