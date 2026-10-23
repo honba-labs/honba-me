@@ -1,45 +1,49 @@
 //! Unit tests for `crate::rules`.
 
-use honba_entities::{Currency, Instrument, InstrumentKind};
-use honba_messages::{Exchange, InstrumentId};
-
+use honba_core::{Price, Quantity};
 use crate::{
-    InstrumentRules, MarketError, NullSymbolGrammar, PriceBand, PriceViolation, QuantityViolation,
-    SymbolGrammar,
+    InstrumentRules, MarketError, PriceBand, PriceViolation, QuantityViolation,
 };
+use rust_decimal_macros::dec;
 
 #[test]
 fn new_rules_default_min_quantity_to_one_lot() {
-    let r = InstrumentRules::new(25.0, 0.05);
-    assert_eq!(r.min_order_quantity, 25.0);
+    let r = InstrumentRules::new(Quantity::new(dec!(25.0)), Price::new(dec!(0.05)));
+    assert_eq!(r.min_order_quantity, Quantity::new(dec!(25.0)));
     assert_eq!(r.max_order_quantity, None);
-    assert_eq!(r.with_max_quantity(1800.0).max_order_quantity, Some(1800.0));
+    assert_eq!(r.with_max_quantity(Quantity::new(dec!(1800.0))).max_order_quantity, Some(Quantity::new(dec!(1800.0))));
 }
 
 #[test]
 fn quantity_must_be_a_lot_multiple_within_bounds() {
-    let r = InstrumentRules::new(25.0, 0.05).with_max_quantity(100.0);
-    assert_eq!(r.validate_quantity(25.0), Ok(()));
-    assert_eq!(r.validate_quantity(100.0), Ok(()));
+    let q25 = Quantity::from(Decimal::from(25));
+    let q100 = Quantity::from(Decimal::from(100));
+    let q10 = Quantity::from(Decimal::from(10));
+    let q125 = Quantity::from(Decimal::from(125));
+    let q30 = Quantity::from(Decimal::from(30));
+
+    let r = InstrumentRules::new(q25, Price::new(Decimal::from(1))).with_max_quantity(q100);
+    assert_eq!(r.validate_quantity(q25), Ok(()));
+    assert_eq!(r.validate_quantity(q100), Ok(()));
     assert_eq!(
-        r.validate_quantity(10.0),
+        r.validate_quantity(q10),
         Err(QuantityViolation::BelowMin {
-            quantity: 10.0,
-            min: 25.0
+            quantity: q10,
+            min: q25
         })
     );
     assert_eq!(
-        r.validate_quantity(125.0),
+        r.validate_quantity(q125),
         Err(QuantityViolation::OverFreeze {
-            quantity: 125.0,
-            max: 100.0
+            quantity: q125,
+            max: q100
         })
     );
     assert_eq!(
-        r.validate_quantity(30.0),
+        r.validate_quantity(q30),
         Err(QuantityViolation::NotLotMultiple {
-            quantity: 30.0,
-            lot: 25.0
+            quantity: q30,
+            lot: q25
         })
     );
 }

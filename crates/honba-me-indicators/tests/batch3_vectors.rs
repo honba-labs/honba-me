@@ -5,32 +5,25 @@
 //! streaming indicators and a pure O(n) reference read from this one file.
 
 use honba_indicators::{Donchian, DonchianValue, Indicator, Stochastic, WilliamsR};
-use honba_messages::{
-    Bar, BarAggregation, BarSpecification, BarType, Exchange, InstrumentId, PriceType, UnixNanos,
-};
+use honba_core::{Bar, Exchange, InstrumentId, Price, Quantity};
 use serde_json::Value;
 
 const FIXTURE: &str = include_str!("vectors_batch3.json");
 
 fn any_instrument() -> InstrumentId {
-    InstrumentId::new("X", Exchange::new("NSE"))
+    InstrumentId::new(Exchange::Nse, "X")
 }
 
 fn bar(h: f64, l: f64, c: f64) -> Bar {
-    let bt = BarType::new(
-        any_instrument(),
-        BarSpecification::new(1, BarAggregation::Minute, PriceType::Last),
-    );
-    Bar::new(
-        bt,
-        c,
-        h,
-        l,
-        c,
-        1.0,
-        UnixNanos::from_u64(1),
-        UnixNanos::from_u64(1),
-    )
+    Bar {
+        instrument: any_instrument(),
+        open: Price::from(c),
+        high: Price::from(h),
+        low: Price::from(l),
+        close: Price::from(c),
+        volume: Quantity::from(1.0),
+        ts_event: chrono::Utc::now(),
+    }
 }
 
 fn close(a: f64, b: f64) -> bool {

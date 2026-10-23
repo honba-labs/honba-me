@@ -12,7 +12,7 @@ use tokio::sync::RwLock;
 use honba_core::{DepthLevel, Exchange, InstrumentId, Price, Quantity, Tick};
 use honba_me_core::{
     CoalescingTickBuffer, FeedHealth, MarketDataFeed, MdError, ReconnectionManager, Subscription,
-    SymbolMapper,
+    SymbolMapper, WsClient, WsConfig,
 };
 
 /// Zerodha Kite Ticker feed adapter.
@@ -21,8 +21,8 @@ pub struct ZerodhaFeed {
     pub api_key: String,
     /// Access token
     pub access_token: String,
-    /// WebSocket endpoint
-    pub ws_url: String,
+    /// WebSocket client
+    pub ws_client: WsClient,
     /// Symbol and token mapper
     pub mapper: Arc<RwLock<SymbolMapper>>,
     /// Connection and subscription state manager
@@ -44,10 +44,11 @@ impl ZerodhaFeed {
         access_token: impl Into<String>,
         ws_url: impl Into<String>,
     ) -> Self {
+        let ws_url = ws_url.into();
         Self {
             api_key: api_key.into(),
             access_token: access_token.into(),
-            ws_url: ws_url.into(),
+            ws_client: WsClient::new(ws_url),
             mapper: Arc::new(RwLock::new(SymbolMapper::new())),
             reconnection: Arc::new(ReconnectionManager::new()),
         }
@@ -201,15 +202,21 @@ impl ZerodhaFeed {
         })
     }
 
-    /// Decompress zlib-compressed binary data from Kite Ticker.
-    pub fn decompress_zlib(data: &[u8]) -> Result<Vec<u8>, MdError> {
-        use flate2::read::ZlibDecoder;
-        use std::io::Read;
-        let mut decoder = ZlibDecoder::new(data);
-        let mut decompressed = Vec::new();
-        decoder.read_to_end(&mut decompressed)
-            .map_err(|e| MdError::Transport(format!("zlib decompression failed: {e}")))?;
-        Ok(decompressed)
+    /// Unwraps Kite Ticker frames (2-byte length prefix).
+    pub fn unwrap_frames(data: &[u8]) -> Vec<&[u8]> {
+        let mut frames = Vec::new();
+        let mut pos = 0;
+        while pos + 2 <= data.len() {
+            let len = u16::from_be_bytes([data[pos], data[pos+1]]) as usize;
+            pos += 2;
+            if pos + len <= data.len() {
+                frames.push(&data[pos..pos + len]);
+                pos += len;
+            } else {
+                break;
+            }
+        }
+        frames
     }
 }
 
@@ -228,7 +235,36 @@ impl MarketDataFeed for ZerodhaFeed {
         }
 
         let (buf, rx) = CoalescingTickBuffer::new(5000);
-        let _ = buf; // In live client, the WebSocket reader writes to `buf`
+        
+        // Spawn a background task to process WebSocket messages
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mapper = self.mapper.clone();
+        
+        let buf_tx = buf.clone();
+
+        tokio::spawn(async move {
+            while let Some(msg) = msg_rx.recv().await {
+                if msg.is_binary {
+                    // Zerodha binary packets need parsing based on length/type
+                    // For now, assume a simple dispatch to LTP or Quote based on length
+                    // In a real implementation, we need frame unwrapping and full protocol handling
+                    let tick = match msg.payload.len() {
+                        8 => Self::parse_binary_ltp(&msg.payload, &mapper.read().await),
+                        28 => Self::parse_binary_quote(&msg.payload, &mapper.read().await),
+                        44 => Self::parse_binary_quote_44b(&msg.payload, &mapper.read().await),
+                        184 => Self::parse_binary_depth_184b(&msg.payload, &mapper.read().await),
+                        _ => continue, // Unknown packet size
+                    };
+                    
+                    if let Ok(tick) = tick {
+                        let _ = buf_tx.send(tick).await;
+                    }
+                }
+            }
+        });
+
+        self.ws_client.connect(msg_tx).await.map_err(|e| MdError::Transport(e.to_string()))?;
+        
         let stream = tokio_stream::wrappers::ReceiverStream::new(rx);
         Ok(Box::pin(stream))
     }

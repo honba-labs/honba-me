@@ -7,6 +7,9 @@
 //! Maintains fast in-memory lookup indices for Token ↔ Symbol ↔ ISIN ↔ InstrumentId
 //! resolution with sub-microsecond lookup performance.
 
+pub mod downloader;
+pub use downloader::MasterDownloader;
+
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 use std::str::FromStr;
@@ -97,6 +100,16 @@ impl InstrumentMaster {
     /// Look up an instrument by symbol.
     pub fn by_symbol(&self, symbol: &str) -> Option<&InstrumentId> {
         self.symbol_index.get(symbol)
+    }
+
+    /// Resolve tick size based on current instrument rules.
+    pub fn resolve_tick_size(&self, id: &InstrumentId) -> Option<Price> {
+        self.entries.get(id).and_then(|e| e.tick_size)
+    }
+
+    /// Resolve lot size based on current instrument rules.
+    pub fn resolve_lot_size(&self, id: &InstrumentId) -> Option<u32> {
+        self.entries.get(id).and_then(|e| e.lot_size)
     }
 
     /// Look up an instrument by ISIN.

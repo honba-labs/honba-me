@@ -261,7 +261,7 @@ Each broker crate must provide a live async WebSocket connection (`tokio-tungste
   - [x] Implement `MarketDataEnricher` to attach dynamic `PriceBand` and intraday VWAP to incoming ticks.
 
 ### Phase 2: Production WebSocket Clients & Multi-Broker Binary Decoders (M1) — Week 3–5
-- [ ] **2.1 Shared WebSocket Transport (`honba-me-core`)**
+- [x] **2.1 Shared WebSocket Transport (`honba-me-core`)**
 - [ ] **2.2 Zerodha Kite Ticker (`honba-me-zerodha`)**
 - [ ] **2.3 Upstox v2 Feed (`honba-me-upstox`)**
 - [ ] **2.4 Fyers v3 Data Socket (`honba-me-fyers`)**

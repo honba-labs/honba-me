@@ -111,6 +111,7 @@ pub struct WsClient {
     ws_url: String,
     state: Arc<RwLock<WsConnectionState>>,
     tx: Arc<tokio::sync::Mutex<Option<mpsc::UnboundedSender<WsOutMessage>>>>,
+    msg_tx: Arc<tokio::sync::Mutex<Option<mpsc::UnboundedSender<WsMessage>>>>,
     last_message: Arc<RwLock<Option<Instant>>>,
     reconnect_task: Arc<RwLock<Option<tokio::task::JoinHandle<()>>>>,
 }
@@ -128,6 +129,7 @@ impl WsClient {
             ws_url: ws_url.into(),
             state: Arc::new(RwLock::new(WsConnectionState::Disconnected)),
             tx: Arc::new(tokio::sync::Mutex::new(None)),
+            msg_tx: Arc::new(tokio::sync::Mutex::new(None)),
             last_message: Arc::new(RwLock::new(None)),
             reconnect_task: Arc::new(RwLock::new(None)),
         }
@@ -177,16 +179,22 @@ impl WsClient {
     /// This method spawns a background task that handles connection,
     /// heartbeat, and reconnection. It returns immediately; use `state()`
     /// to check connection status.
-    pub async fn connect(&self) -> WsResult<()> {
+    pub async fn connect(&self, msg_tx: mpsc::UnboundedSender<WsMessage>) -> WsResult<()> {
         // Cancel any existing reconnect task
         if let Some(handle) = self.reconnect_task.write().await.take() {
             handle.abort();
+        }
+
+        {
+            let mut mt = self.msg_tx.lock().await;
+            *mt = Some(msg_tx.clone());
         }
 
         let ws_url = self.ws_url.clone();
         let config = self.config.clone();
         let state = self.state.clone();
         let tx = self.tx.clone();
+        let msg_tx = self.msg_tx.clone();
         let last_message = self.last_message.clone();
         let reconnect_task = self.reconnect_task.clone();
 
@@ -214,16 +222,27 @@ impl WsClient {
                         }
                         reconnect_delay = config.initial_reconnect_delay_secs;
 
-                        // Run the WebSocket message loop
-                        if let Err(e) = run_ws_loop(
-                            ws_stream,
-                            config.clone(),
-                            tx.clone(),
-                            last_message.clone(),
-                        )
-                        .await
-                        {
-                            warn!("WebSocket loop error: {}", e);
+                        let current_msg_tx = {
+                            let mt = msg_tx.lock().await;
+                            mt.clone()
+                        };
+
+                        if let Some(m_tx) = current_msg_tx {
+                            // Run the WebSocket message loop
+                            if let Err(e) = run_ws_loop(
+                                ws_stream,
+                                config.clone(),
+                                tx.clone(),
+                                m_tx,
+                                last_message.clone(),
+                            )
+                            .await
+                            {
+                                warn!("WebSocket loop error: {}", e);
+                            }
+                        } else {
+                            warn!("No message receiver set, closing connection");
+                            break;
                         }
                     }
                     Err(e) => {
@@ -291,6 +310,7 @@ async fn run_ws_loop(
     mut ws_stream: WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
     config: WsConfig,
     tx: Arc<tokio::sync::Mutex<Option<mpsc::UnboundedSender<WsOutMessage>>>>,
+    msg_tx: mpsc::UnboundedSender<WsMessage>,
     last_message: Arc<RwLock<Option<Instant>>>,
 ) -> WsResult<()> {
     let (mut ws_tx, mut ws_rx) = ws_stream.split();
@@ -309,22 +329,31 @@ async fn run_ws_loop(
             // Incoming WebSocket message
             msg = ws_rx.next() => {
                 match msg {
-                    Some(Ok(Message::Binary(_data))) => {
+                    Some(Ok(Message::Binary(data))) => {
                         {
                             let mut lm = last_message.write().await;
                             *lm = Some(Instant::now());
                         }
-                        // Message handling is done by the caller via the RX channel
+                        let _ = msg_tx.send(WsMessage {
+                            payload: data,
+                            is_binary: true,
+                            received_at: Utc::now(),
+                        });
                     }
-                    Some(Ok(Message::Text(_text))) => {
+                    Some(Ok(Message::Text(text))) => {
                         {
                             let mut lm = last_message.write().await;
                             *lm = Some(Instant::now());
                         }
+                        let _ = msg_tx.send(WsMessage {
+                            payload: text.into_bytes(),
+                            is_binary: false,
+                            received_at: Utc::now(),
+                        });
                     }
-                    Some(Ok(Message::Ping(_data))) => {
+                    Some(Ok(Message::Ping(data))) => {
                         // Respond with Pong
-                        let _ = ws_tx.send(Message::Pong(vec![])).await;
+                        let _ = ws_tx.send(Message::Pong(data)).await;
                         {
                             let mut lm = last_message.write().await;
                             *lm = Some(Instant::now());

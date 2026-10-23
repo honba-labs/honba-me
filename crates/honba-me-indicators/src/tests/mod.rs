@@ -12,25 +12,28 @@ mod sma;
 mod stochastic;
 mod williams_r;
 
-use honba_messages::{
-    Bar, BarAggregation, BarSpecification, BarType, Exchange, InstrumentId, PriceType, UnixNanos,
+use honba_core::{
+    Bar, Exchange, InstrumentId, Price, Quantity,
 };
 
 use crate::Indicator;
 
 /// A placeholder instrument for tests where the instrument does not matter.
 fn any_instrument() -> InstrumentId {
-    InstrumentId::new("X", Exchange::new("NSE"))
+    InstrumentId::new(Exchange::Nse, "X")
 }
 
 /// A bar with the given high, low and close (open = close, volume 1).
 fn hlc(high: f64, low: f64, close: f64) -> Bar {
-    let bt = BarType::new(
-        any_instrument(),
-        BarSpecification::new(1, BarAggregation::Minute, PriceType::Last),
-    );
-    let t = UnixNanos::from_u64(1);
-    Bar::new(bt, close, high, low, close, 1.0, t, t)
+    Bar {
+        instrument: any_instrument(),
+        open: Price::from(close),
+        high: Price::from(high),
+        low: Price::from(low),
+        close: Price::from(close),
+        volume: Quantity::from(1.0),
+        ts_event: chrono::Utc::now(),
+    }
 }
 
 /// Feeds every input and returns the outputs in order.
