@@ -13,6 +13,7 @@ members = [
   "crates/honba-me-zerodha",
   "crates/honba-me-angelone",
 ]
+default-members = []
 
 [workspace.package]
 version = "0.1.0"
