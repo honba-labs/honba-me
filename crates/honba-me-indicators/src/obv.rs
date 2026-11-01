@@ -11,8 +11,8 @@
 //! OBV = OBV[1] if Close == Close[1]
 //! ```
 
-use honba_core::Bar;
 use crate::indicator::Indicator;
+use honba_core::Bar;
 use rust_decimal::prelude::ToPrimitive;
 
 /// On Balance Volume (OBV).

@@ -257,8 +257,9 @@ pub fn write_tick_file(
         |values: Vec<Option<f64>>| -> ArrayRef { std::sync::Arc::new(Float64Array::from(values)) };
     let strings =
         |values: Vec<&str>| -> ArrayRef { std::sync::Arc::new(StringArray::from(values)) };
-    let owned_strings =
-        |values: Vec<String>| -> ArrayRef { std::sync::Arc::new(StringArray::from_iter_values(values)) };
+    let owned_strings = |values: Vec<String>| -> ArrayRef {
+        std::sync::Arc::new(StringArray::from_iter_values(values))
+    };
     let opt_strings =
         |values: Vec<Option<&str>>| -> ArrayRef { std::sync::Arc::new(StringArray::from(values)) };
     let opt_owned = |values: Vec<Option<String>>| -> ArrayRef {

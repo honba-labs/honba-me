@@ -1,6 +1,6 @@
 //! Unit tests for `crate::settlement`.
 
-use honba_entities::{InstrumentKind, PositionSide};
+use honba_core::{InstrumentKind, PositionSide};
 
 use super::{Holidays, date};
 use crate::settlement::PercentageMarginModel;

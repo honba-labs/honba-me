@@ -1,9 +1,7 @@
 //! Tests for the scoring engine: confluence, gates, causality.
 
-use honba_core::signal::{SignalDirection, SignalHorizon};
-
-use crate::catalog::{self, Params, Ruleset};
-use crate::engine::{compute, signals_for_horizon};
+use crate::catalog::{self, Params, Ruleset, SignalHorizon};
+use crate::engine::{SignalDirection, UnixNanos, compute, signals_for_horizon};
 use crate::tests::{instrument, wavy};
 
 #[test]
@@ -43,7 +41,14 @@ fn a_signal_never_revises_when_future_bars_are_appended() {
     let prefix_bars = &full_bars[..cut];
     let prefix = signals_for_horizon(prefix_bars, &id, "5m", SignalHorizon::Intraday);
 
-    let last_t = prefix_bars.last().unwrap().ts_event();
+    let last_t = UnixNanos::from_u64(
+        prefix_bars
+            .last()
+            .unwrap()
+            .timestamp
+            .timestamp_nanos_opt()
+            .unwrap_or(0) as u64,
+    );
     let expected: Vec<_> = full.iter().filter(|s| s.t <= last_t).cloned().collect();
     assert_eq!(expected, prefix, "a truncated run must match the full run");
     assert!(
@@ -84,7 +89,7 @@ fn cooldown_suppresses_the_same_side_in_consecutive_bars() {
     };
     let params = Params::for_horizon(SignalHorizon::Intraday);
     let signals = compute(&bars, &id, "5m", &ruleset, &params);
-    let mut last_buy: Option<honba_messages::UnixNanos> = None;
+    let mut last_buy: Option<UnixNanos> = None;
     for signal in &signals {
         if signal.direction == SignalDirection::Buy {
             if let Some(prev) = last_buy {
@@ -115,7 +120,7 @@ fn both_horizons_agree_on_the_contract_but_not_the_parameters() {
         let signals = signals_for_horizon(&bars, &id, "1d", horizon);
         for signal in &signals {
             assert_eq!(signal.horizon, horizon);
-            assert_eq!(signal.ruleset, horizon.ruleset());
+            assert_eq!(signal.ruleset, horizon.ruleset().id);
         }
     }
 }

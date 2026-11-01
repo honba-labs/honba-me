@@ -6,9 +6,9 @@ mod engine;
 mod levels;
 mod price_action;
 
+use chrono::{Duration, TimeZone, Utc};
 use honba_core::{Bar, Exchange, InstrumentId, Price, Quantity};
 use rust_decimal::prelude::*;
-use chrono::{DateTime, Utc, TimeZone, Duration};
 
 /// A placeholder instrument for tests where the instrument does not matter.
 pub(crate) fn instrument() -> InstrumentId {
@@ -57,25 +57,24 @@ pub(crate) fn bars_ohlcv(
     volume: &[f64],
 ) -> Vec<Bar> {
     let id = instrument();
-    let spec = spec();
+    let start_ts = Utc.with_ymd_and_hms(2025, 1, 1, 9, 15, 0).unwrap();
     (0..close.len())
         .map(|i| {
-            let ts = UnixNanos::from_u64((i as u64 + 1) * 60_000_000_000);
-            Bar::new(
-                BarType::new(id.clone(), spec),
-                open[i],
-                high[i],
-                low[i],
-                close[i],
-                volume[i],
-                ts,
-                ts,
-            )
+            let ts = start_ts + Duration::minutes(i as i64);
+            Bar {
+                instrument: id.clone(),
+                open: price(open[i]),
+                high: price(high[i]),
+                low: price(low[i]),
+                close: price(close[i]),
+                volume: quantity(volume[i]),
+                timestamp: ts,
+            }
         })
         .collect()
 }
 
-/// Bars with explicit OHLC, volume and a UTC day number per bar: `ts_event` is the day boundary
+/// Bars with explicit OHLC, volume and a UTC day number per bar: timestamp is the day boundary
 /// plus `i` minutes, so bars on the same day share a day but stay ordered.
 pub(crate) fn bars_at_days(
     open: &[f64],
@@ -86,20 +85,19 @@ pub(crate) fn bars_at_days(
     days: &[u64],
 ) -> Vec<Bar> {
     let id = instrument();
-    let spec = spec();
+    let start_ts = Utc.with_ymd_and_hms(2025, 1, 1, 9, 15, 0).unwrap();
     (0..close.len())
         .map(|i| {
-            let ts = UnixNanos::from_u64(days[i] * 86_400_000_000_000 + i as u64 * 60_000_000_000);
-            Bar::new(
-                BarType::new(id.clone(), spec),
-                open[i],
-                high[i],
-                low[i],
-                close[i],
-                volume[i],
-                ts,
-                ts,
-            )
+            let ts = start_ts + Duration::days(days[i] as i64) + Duration::minutes(i as i64);
+            Bar {
+                instrument: id.clone(),
+                open: price(open[i]),
+                high: price(high[i]),
+                low: price(low[i]),
+                close: price(close[i]),
+                volume: quantity(volume[i]),
+                timestamp: ts,
+            }
         })
         .collect()
 }

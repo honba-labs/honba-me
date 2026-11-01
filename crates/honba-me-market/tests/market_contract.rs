@@ -1,8 +1,10 @@
 //! Contract test suite running against any MarketProfile implementation.
 
 use chrono::NaiveDate;
-use honba_entities::{Currency, Instrument, InstrumentKind, PositionSide};
-use honba_messages::{Exchange, InstrumentId, OrderSide};
+use honba_core::{
+    Currency, Exchange, InstrumentId, InstrumentKind, OrderSide, PositionSide, Price, Quantity,
+};
+use rust_decimal_macros::dec;
 
 use honba_market::costs::MarketSegment;
 use honba_market::null::NullMarketProfile;
@@ -16,7 +18,7 @@ fn date(y: i32, m: u32, d: u32) -> NaiveDate {
 fn verify_market_profile_contract(profile: &dyn MarketProfile) {
     // 1. Profile identification
     assert!(!profile.market_code().is_empty());
-    assert_ne!(profile.currency(), Currency::Gbp); // Sanity check
+    assert_ne!(profile.currency(), Currency::Usd); // Sanity check
 
     // 2. Calendar contracts
     let cal = profile.calendar();
@@ -39,18 +41,12 @@ fn verify_market_profile_contract(profile: &dyn MarketProfile) {
     assert!(buy_breakdown.total() >= 0.0);
 
     // 4. Instrument Rules contracts
-    let inst = Instrument::new(
-        InstrumentId::new("TEST", Exchange::new("TEST_EX")),
-        InstrumentKind::Equity,
-        profile.currency(),
-        1.0,
-        0.05,
-    );
-    let rules = profile.instrument_rules().rules_for(&inst);
-    assert!(rules.lot_size > 0.0);
-    assert!(rules.tick_size > 0.0);
-    assert!(rules.validate_quantity(1.0).is_ok());
-    assert!(rules.validate_price(100.05).is_ok());
+    let inst_id = InstrumentId::new(Exchange::Nse, "TEST");
+    let rules = profile.instrument_rules().rules_for(&inst_id);
+    assert!(rules.lot_size.is_positive());
+    assert!(rules.tick_size.is_positive());
+    assert!(rules.validate_quantity(Quantity::from_u64(1)).is_ok());
+    assert!(rules.validate_price(Price::new(dec!(100.05))).is_ok());
 
     // 5. Symbol Grammar contracts
     let grammar = profile.symbol_grammar();

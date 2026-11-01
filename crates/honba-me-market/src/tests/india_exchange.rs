@@ -22,25 +22,25 @@ fn unknown_exchange_error_lists_supported_ones() {
 #[test]
 fn bare_symbol_defaults_to_nse() {
     let id = resolve_instrument("INFY", None).unwrap();
-    assert_eq!((id.symbol(), id.exchange().as_str()), ("INFY", "NSE"));
+    assert_eq!((id.symbol.as_str(), id.exchange.as_str()), ("INFY", "NSE"));
 }
 
 #[test]
 fn bare_symbol_uses_the_explicit_exchange() {
     let id = resolve_instrument("INFY", Some("BSE")).unwrap();
-    assert_eq!(id.exchange().as_str(), "BSE");
+    assert_eq!(id.exchange.as_str(), "BSE");
 }
 
 #[test]
 fn qualified_symbol_carries_its_exchange() {
     let id = resolve_instrument("bse:INFY", None).unwrap();
-    assert_eq!((id.symbol(), id.exchange().as_str()), ("INFY", "BSE"));
+    assert_eq!((id.symbol.as_str(), id.exchange.as_str()), ("INFY", "BSE"));
 }
 
 #[test]
 fn qualified_symbol_agrees_with_a_matching_flag() {
     let id = resolve_instrument("NSE:INFY", Some("nse")).unwrap();
-    assert_eq!(id.exchange().as_str(), "NSE");
+    assert_eq!(id.exchange.as_str(), "NSE");
 }
 
 #[test]

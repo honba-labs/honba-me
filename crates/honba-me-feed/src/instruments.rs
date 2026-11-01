@@ -287,10 +287,7 @@ fn append_batch(
         let expiry = optional(&expiries, row, |value| parse_date(value, "expiry"))?;
         let option_type = optional(&option_types, row, parse_option_type)?;
         let instrument = Instrument::new(
-            InstrumentId::new(
-                parse_exchange(exchanges.value(row))?,
-                symbols.value(row),
-            ),
+            InstrumentId::new(parse_exchange(exchanges.value(row))?, symbols.value(row)),
             parse_kind(kinds.value(row))?,
             parse_currency(currencies.value(row))?,
             lot_sizes.value(row),

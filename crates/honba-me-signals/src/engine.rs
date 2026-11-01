@@ -28,15 +28,49 @@ pub struct Reason {
     pub weight: f64,
 }
 
+/// Nanosecond timestamp.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default)]
+pub struct UnixNanos(pub u64);
+
+impl UnixNanos {
+    pub fn from_u64(nanos: u64) -> Self {
+        Self(nanos)
+    }
+
+    pub fn as_u64(&self) -> u64 {
+        self.0
+    }
+}
+
 /// A trading signal with trade setup tagging (ATR-based stop-loss, targets).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Signal {
+    pub ruleset: String,
     pub horizon: SignalHorizon,
+    pub timeframe: String,
+    pub t: UnixNanos,
     pub direction: SignalDirection,
     pub strength: f64,
     pub reasons: Vec<Reason>,
+    pub tags: Vec<String>,
     pub stop_loss: Option<Price>,
     pub targets: Vec<Price>,
+}
+
+impl Signal {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.strength < 0.0 || self.strength > 1.0 {
+            return Err("strength out of range");
+        }
+        if self.reasons.is_empty() {
+            return Err("reasons empty");
+        }
+        Ok(())
+    }
+
+    pub fn reason_codes(&self) -> Vec<String> {
+        self.reasons.iter().map(|r| r.code.clone()).collect()
+    }
 }
 
 /// Scores one closed bar window under the horizon's shipped ruleset and parameters.
@@ -65,7 +99,7 @@ pub fn signals_for_horizon(
 pub fn compute(
     bars: &[Bar],
     _instrument: &InstrumentId,
-    _timeframe: &str,
+    timeframe: &str,
     ruleset: &Ruleset,
     params: &Params,
 ) -> Vec<Signal> {
@@ -121,11 +155,22 @@ pub fn compute(
         let atr = series.atr[bar];
         let (stop_loss, targets) = compute_trade_setup(direction, close_price, atr);
 
+        let reasons = build_reasons(&firings);
+        let mut tags: Vec<String> = reasons.iter().map(|r| r.code.clone()).collect();
+        tags.sort();
+        tags.dedup();
+
+        let t_nanos = bars[bar].timestamp.timestamp_nanos_opt().unwrap_or(0) as u64;
+
         let signal = Signal {
+            ruleset: ruleset.id.to_string(),
             horizon: ruleset.horizon,
+            timeframe: timeframe.to_string(),
+            t: UnixNanos::from_u64(t_nanos),
             direction,
             strength,
-            reasons: build_reasons(&firings),
+            reasons,
+            tags,
             stop_loss,
             targets,
         };

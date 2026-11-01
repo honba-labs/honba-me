@@ -12,8 +12,8 @@
 //! CPR Width = TC - BC
 //! ```
 
-use honba_core::Bar;
 use crate::indicator::Indicator;
+use honba_core::Bar;
 use rust_decimal::prelude::ToPrimitive;
 
 /// Central Pivot Range (CPR) indicator.

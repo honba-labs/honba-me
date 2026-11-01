@@ -83,7 +83,7 @@ impl FromStr for IndiaExchange {
 /// use honba_market::india::exchange::resolve_instrument;
 ///
 /// let id = resolve_instrument("BSE:INFY", None).unwrap();
-/// assert_eq!(id.to_string(), "INFY.BSE");
+/// assert_eq!(id.to_string(), "BSE:INFY");
 /// ```
 pub fn resolve_instrument(
     text: &str,

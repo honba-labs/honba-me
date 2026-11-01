@@ -39,7 +39,7 @@ pub mod universes;
 pub mod india;
 
 // Re-export core generic contracts at crate root
-pub use aggregator::SessionBarAggregator;
+pub use aggregator::{BarAggregation, BarSpecification, SessionBarAggregator};
 pub use calendar::{HolidaySource, MarketCalendar, Session, TradingCalendar};
 pub use costs::{
     Charge, CostModelSource, CostSchedule, DatedCostScheduleSource, FeeBreakdown, MarketSegment,

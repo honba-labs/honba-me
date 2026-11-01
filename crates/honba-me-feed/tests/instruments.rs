@@ -11,8 +11,8 @@ use arrow::record_batch::RecordBatch;
 use chrono::NaiveDate;
 use honba_core::{Exchange, InstrumentId};
 use honba_feed::ports::InstrumentMaster;
-use honba_feed::{CatalogInstrumentMaster, snapshot_schema};
 use honba_feed::wire::UnixNanos;
+use honba_feed::{CatalogInstrumentMaster, snapshot_schema};
 use parquet::arrow::ArrowWriter;
 
 struct TempDir(PathBuf);
@@ -90,7 +90,7 @@ async fn catalog_resolves_expired_contract() {
     assert!(master.resolve_as_of(&live, as_of).await.unwrap().is_some());
 
     let _ts = UnixNanos::from_u64(1_700_000_000_000_000_000);
-    
+
     // Simulate what the engine would do: resolve and decide whether to order.
     let mut orders_submitted = 0;
     for (id, _order_id) in [(&expired, "EXPIRED-1"), (&live, "LIVE-1")] {
@@ -99,5 +99,8 @@ async fn catalog_resolves_expired_contract() {
         }
     }
 
-    assert_eq!(orders_submitted, 1, "only the live contract should be submitted");
+    assert_eq!(
+        orders_submitted, 1,
+        "only the live contract should be submitted"
+    );
 }

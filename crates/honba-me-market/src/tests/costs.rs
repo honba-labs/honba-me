@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use chrono::NaiveDate;
-use honba_messages::OrderSide;
+use honba_core::OrderSide;
 
 use crate::{
     Charge, CostModelSource, CostSchedule, DatedCostScheduleSource, FeeBreakdown, MarketSegment,

@@ -420,7 +420,8 @@ pub fn parse_fno_symbol(raw: &str) -> Result<FnoContract, FnoParseError> {
                     if strike_val > 0.0 {
                         let underlying = &rem[..i];
                         if is_valid_underlying(underlying) {
-                            let strike_price = Price::from_rupees(strike_val.to_string().as_str()).unwrap_or(Price::ZERO);
+                            let strike_price = Price::from_rupees(strike_val.to_string().as_str())
+                                .unwrap_or(Price::ZERO);
                             candidates.push((underlying.to_string(), exp, strike_price));
                         }
                     }

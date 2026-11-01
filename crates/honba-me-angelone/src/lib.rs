@@ -37,6 +37,11 @@ impl AngelOneFeed {
     /// Default Angel One SmartAPI WebSocket 2.0 endpoint.
     pub const DEFAULT_WS_URL: &'static str = "wss://smartapisocket.angelone.in/smart-stream";
 
+    /// Protocol field byte sizes
+    pub const TOKEN_LEN: usize = 25;
+    pub const LTP_LEN: usize = std::mem::size_of::<f64>();
+    pub const TS_LEN: usize = std::mem::size_of::<f64>();
+
     /// Create a new Angel One feed adapter.
     pub fn new(
         api_key: impl Into<String>,
@@ -91,22 +96,24 @@ impl AngelOneFeed {
 
     /// Parse a Quote message (type 1).
     fn parse_quote(bytes: &[u8], mapper: &SymbolMapper) -> Result<Tick, MdError> {
-        if bytes.len() < 38 {
-            return Err(MdError::Transport("Quote packet too short".into()));
-        }
+        let rest = bytes
+            .get(1..)
+            .ok_or_else(|| MdError::Transport("Quote packet missing header".into()))?;
 
         // 25 bytes: instrument token (ASCII string, null-padded)
-        let token_bytes = &bytes[1..26];
+        let (token_bytes, rest) = rest
+            .split_first_chunk::<{ Self::TOKEN_LEN }>()
+            .ok_or_else(|| MdError::Transport("Quote packet missing token".into()))?;
         let token_str = String::from_utf8_lossy(token_bytes)
             .trim_end_matches('\0')
             .trim()
             .to_string();
 
         // 8 bytes: LTP (double, little-endian)
-        let ltp_raw = f64::from_le_bytes([
-            bytes[26], bytes[27], bytes[28], bytes[29], bytes[30], bytes[31], bytes[32], bytes[33],
-        ]);
-        let price_dec = Decimal::from_f64(ltp_raw).unwrap_or(Decimal::ZERO);
+        let (ltp_bytes, _) = rest
+            .split_first_chunk::<{ Self::LTP_LEN }>()
+            .ok_or_else(|| MdError::Transport("Quote packet missing LTP".into()))?;
+        let price_dec = Decimal::from_f64(f64::from_le_bytes(*ltp_bytes)).unwrap_or(Decimal::ZERO);
 
         let inst = mapper.to_canonical(&token_str).unwrap_or_else(|| {
             InstrumentId::new(Exchange::Nse, token_str.clone()).with_token(token_str)
