@@ -3,10 +3,10 @@
 //! Each `MarketEvent::Bar` the connector yields is processed as a canonical
 //! `Tick` or `Bar` in the new `honba_me_feed` port API. The run terminates cleanly at EOF.
 
-use std::io::BufReader;
 use honba_core::{Exchange, InstrumentId};
 use honba_feed::bhavcopy::BhavcopyConnector;
 use honba_feed::ports::{MarketDataConnector, MarketEvent, SubscriptionParams};
+use std::io::BufReader;
 
 const FIXTURE: &str = "TradDt,BizDt,Sgmt,Src,FinInstrmTp,FinInstrmId,ISIN,TckrSymb,SctySrs,XpryDt,FininstrmActlXpryDt,StrkPric,OptnTp,FinInstrmNm,OpnPric,HghPric,LwPric,ClsPric,LastPric,PrvsClsgPric,UndrlygPric,SttlmPric,OpnIntrst,ChngInOpnIntrst,TtlTradgVol,TtlTrfVal,TtlNbOfTxsExctd,SsnId,NewBrdLotQty,Rmks,Rsvd1,Rsvd2,Rsvd3,Rsvd4\n\
 2024-10-01,2024-10-01,CM,NSE,STK,1,INE002A01018,RELIANCE,EQ,,,,,,2900.00,2950.00,2890.00,2940.00,2940.00,2895.00,,,,,5000000,14700000000,120000,1,1,,,,\n\
@@ -41,8 +41,15 @@ async fn bhavcopy_feed_run() {
         }
     }
 
-    assert_eq!(seen_closes.len(), 2, "the run saw exactly the two subscribed bars");
+    assert_eq!(
+        seen_closes.len(),
+        2,
+        "the run saw exactly the two subscribed bars"
+    );
     // Values from the CSV fixture
-    assert_eq!(seen_closes[0], 2940.0, "RELIANCE arrives first, in file order");
+    assert_eq!(
+        seen_closes[0], 2940.0,
+        "RELIANCE arrives first, in file order"
+    );
     assert_eq!(seen_closes[1], 4230.0, "TCS follows");
 }

@@ -149,6 +149,7 @@ impl BarAccumulator {
 pub struct SessionBarAggregator<C: MarketCalendar> {
     calendar: C,
     target_spec: BarSpecification,
+    input_spec: BarSpecification,
     accumulators: HashMap<InstrumentId, BarAccumulator>,
 }
 
@@ -158,8 +159,15 @@ impl<C: MarketCalendar> SessionBarAggregator<C> {
         Self {
             calendar,
             target_spec,
+            input_spec: BarSpecification::new(1, BarAggregation::Minute),
             accumulators: HashMap::new(),
         }
+    }
+
+    /// Sets the input bar specification (defaults to 1-minute bars).
+    pub fn with_input_spec(mut self, input_spec: BarSpecification) -> Self {
+        self.input_spec = input_spec;
+        self
     }
 
     /// Returns the target bar specification.
@@ -179,7 +187,7 @@ impl<C: MarketCalendar> SessionBarAggregator<C> {
     pub fn process(&mut self, bar: &Bar) -> Option<Bar> {
         let instrument = bar.instrument.clone();
         let (window_id, ts_close_boundary, is_window_terminal) =
-            self.window_info(bar.timestamp, &self.target_spec)?;
+            self.window_info(bar.timestamp, &self.input_spec)?;
 
         if let Some(mut acc) = self.accumulators.remove(&instrument) {
             if acc.window_id == window_id {

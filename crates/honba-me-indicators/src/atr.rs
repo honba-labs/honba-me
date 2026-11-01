@@ -15,15 +15,20 @@ use crate::indicator::Indicator;
 /// ranges; subsequent values use Wilder smoothing.
 ///
 /// ```
+/// use honba_core::{Bar, Exchange, InstrumentId, Price, Quantity};
 /// use honba_indicators::{Atr, Indicator};
-/// use honba_messages::{Bar, BarAggregation, BarSpecification, BarType, InstrumentId, PriceType, UnixNanos, Exchange};
+/// use rust_decimal::Decimal;
 ///
 /// fn bar(h: f64, l: f64, c: f64) -> Bar {
-///     let bt = BarType::new(
-///         InstrumentId::new("X", Exchange::new("NSE")),
-///         BarSpecification::new(1, BarAggregation::Day, PriceType::Last),
-///     );
-///     Bar::new(bt, c, h, l, c, 1.0, UnixNanos::from_u64(1), UnixNanos::from_u64(1))
+///     Bar {
+///         instrument: InstrumentId::new(Exchange::Nse, "X"),
+///         open: Price::new(Decimal::from_f64_retain(c).unwrap()),
+///         high: Price::new(Decimal::from_f64_retain(h).unwrap()),
+///         low: Price::new(Decimal::from_f64_retain(l).unwrap()),
+///         close: Price::new(Decimal::from_f64_retain(c).unwrap()),
+///         volume: Quantity::from_u64(1),
+///         timestamp: chrono::Utc::now(),
+///     }
 /// }
 ///
 /// let mut atr = Atr::new(2);
@@ -62,7 +67,7 @@ impl Atr {
     /// Feeds one bar given as raw `high`, `low`, `close` and returns the ATR once warmed up.
     ///
     /// Identical to [`Indicator::update`] on a bar with those fields; it exists so callers that
-    /// only hold price arrays (e.g. the WASM surface) need not build a `Bar`.
+    /// only hold price arrays (e.g. the WASM surface) need not build a `Bar``.
     pub fn update_hlc(&mut self, high: f64, low: f64, close: f64) -> Option<f64> {
         let tr = Self::true_range(high, low, self.prev_close);
         self.prev_close = Some(close);

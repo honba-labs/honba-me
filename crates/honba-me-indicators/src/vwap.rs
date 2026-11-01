@@ -10,8 +10,8 @@
 //! VWAP = Sum(TP * Volume) / Sum(Volume)
 //! ```
 
-use honba_core::Bar;
 use crate::indicator::Indicator;
+use honba_core::Bar;
 use rust_decimal::prelude::ToPrimitive;
 
 /// Volume Weighted Average Price (VWAP).

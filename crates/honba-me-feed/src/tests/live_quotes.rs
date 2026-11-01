@@ -5,7 +5,9 @@ use std::sync::Arc;
 use honba_core::{Exchange, InstrumentId};
 
 use crate::ports::QuoteReader;
-use crate::wire::{Bar, BarAggregation, BarSpecification, BarType, PriceType, QuoteTick, UnixNanos};
+use crate::wire::{
+    Bar, BarAggregation, BarSpecification, BarType, PriceType, QuoteTick, UnixNanos,
+};
 
 use crate::{ColumnarSliceBuilder, Dataset, DatasetReader, LiveQuoteStore};
 

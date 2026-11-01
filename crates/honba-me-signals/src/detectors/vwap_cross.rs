@@ -31,9 +31,7 @@ impl Detector for VwapCross {
                 out.push(Firing {
                     code: "vwap_cross_up",
                     bar: i,
-                    detail: format!(
-                        "Price {close:.2} crossed above VWAP {vwap:.2}"
-                    ),
+                    detail: format!("Price {close:.2} crossed above VWAP {vwap:.2}"),
                     evidence: vec![("vwap", vwap), ("close", close)],
                 });
             }
@@ -42,9 +40,7 @@ impl Detector for VwapCross {
                 out.push(Firing {
                     code: "vwap_cross_down",
                     bar: i,
-                    detail: format!(
-                        "Price {close:.2} crossed below VWAP {vwap:.2}"
-                    ),
+                    detail: format!("Price {close:.2} crossed below VWAP {vwap:.2}"),
                     evidence: vec![("vwap", vwap), ("close", close)],
                 });
             }

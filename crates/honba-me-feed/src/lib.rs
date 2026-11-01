@@ -34,9 +34,9 @@ pub use import::parquet_source::{ParquetBarSource, ParquetError};
 pub use instruments::{CatalogError, CatalogInstrumentMaster, snapshot_schema};
 pub use lakehouse::{Lakehouse, LakehouseCompression, LakehouseError};
 pub use live_quotes::LiveQuoteStore;
-pub use recorder::{RecorderConfig, RecorderStats, TickRecorder};
 pub use parquet_ticks::{ParquetTickStore, TICK_DIR, TickStoreError, tick_schema, write_tick_file};
 pub use reader::{DatasetReader, ReaderError};
+pub use recorder::{RecorderConfig, RecorderStats, TickRecorder};
 pub use ticks::InMemoryTickReader;
 
 /// Local port traits and data types (replaces the deleted `honba-kokoro-ports`).

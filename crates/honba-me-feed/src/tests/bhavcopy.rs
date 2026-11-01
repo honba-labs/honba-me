@@ -67,10 +67,7 @@ async fn bhavcopy_connector_parses_fixture() {
         let spec = reliance.bar_type().spec();
         assert_eq!(spec.aggregation(), BarAggregation::Day);
         assert_eq!(spec.price_type(), PriceType::Last);
-        assert_eq!(
-            reliance.bar_type().instrument_id().exchange.as_str(),
-            "NSE"
-        );
+        assert_eq!(reliance.bar_type().instrument_id().exchange.as_str(), "NSE");
     }
 }
 

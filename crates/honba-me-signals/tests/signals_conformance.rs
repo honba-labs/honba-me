@@ -7,11 +7,13 @@
 //! must produce, matched **by index** — direction, the codes that must be present (extra codes are
 //! allowed), and the count — plus the per-signal invariants (valid, correct ruleset).
 
-use honba_entities::SignalDirection;
-use honba_messages::{
-    Bar, BarAggregation, BarSpecification, BarType, Exchange, InstrumentId, PriceType, UnixNanos,
+use honba_core::{Bar, Exchange, InstrumentId, Price, Quantity};
+use honba_signals::{
+    Params, catalog, compute,
+    engine::{Signal, SignalDirection},
 };
-use honba_signals::{Params, catalog, compute};
+use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
 use serde_json::Value;
 
 const DAY: &str = include_str!("../../../schema/conformance/signals_day.json");
@@ -43,21 +45,20 @@ fn bars(series: &Value, step_seconds: u64) -> Vec<Bar> {
         .map(floats)
         .unwrap_or_else(|| (0..close.len()).map(|i| open[i].min(close[i])).collect());
 
-    let id = InstrumentId::new("X", Exchange::new("NSE"));
-    let spec = BarSpecification::new(1, BarAggregation::Minute, PriceType::Last);
+    let id = InstrumentId::new(Exchange::Nse, "X");
     (0..close.len())
         .map(|i| {
-            let ts = UnixNanos::from_u64((i as u64 + 1) * step_seconds * 1_000_000_000);
-            Bar::new(
-                BarType::new(id.clone(), spec),
-                open[i],
-                high[i],
-                low[i],
-                close[i],
-                volume[i],
-                ts,
-                ts,
-            )
+            let nanos = (i as i64 + 1) * step_seconds as i64 * 1_000_000_000;
+            let ts = chrono::DateTime::from_timestamp_nanos(nanos);
+            Bar {
+                instrument: id.clone(),
+                open: Price::new(Decimal::from_f64(open[i]).unwrap_or_default()),
+                high: Price::new(Decimal::from_f64(high[i]).unwrap_or_default()),
+                low: Price::new(Decimal::from_f64(low[i]).unwrap_or_default()),
+                close: Price::new(Decimal::from_f64(close[i]).unwrap_or_default()),
+                volume: Quantity::new(Decimal::from_f64(volume[i]).unwrap_or_default()),
+                timestamp: ts,
+            }
         })
         .collect()
 }
@@ -74,7 +75,7 @@ fn f64_or(value: Option<&Value>, fallback: f64) -> f64 {
 }
 
 /// Horizon defaults, overridden by the case's `params`.
-fn params(horizon: honba_entities::SignalHorizon, case: &Value) -> Params {
+fn params(horizon: catalog::SignalHorizon, case: &Value) -> Params {
     let base = Params::for_horizon(horizon);
     let Some(overrides) = case.get("params") else {
         return base;
@@ -93,11 +94,12 @@ fn params(horizon: honba_entities::SignalHorizon, case: &Value) -> Params {
         breakout_window: usize_or(overrides.get("breakoutWindow"), base.breakout_window),
         pivot_span: usize_or(overrides.get("pivotSpan"), base.pivot_span),
         range_52w: usize_or(overrides.get("range52w"), base.range_52w),
+        orb_minutes: usize_or(overrides.get("orbMinutes"), base.orb_minutes),
     }
 }
 
 /// The horizon's shipped ruleset, overridden by the case's `gate`.
-fn ruleset(horizon: honba_entities::SignalHorizon, case: &Value) -> catalog::Ruleset {
+fn ruleset(horizon: catalog::SignalHorizon, case: &Value) -> catalog::Ruleset {
     let mut base = *catalog::ruleset_for(horizon);
     if let Some(gate) = case.get("gate") {
         if let Some(v) = gate.get("minStrength") {
@@ -114,11 +116,12 @@ fn dir(direction: SignalDirection) -> &'static str {
     match direction {
         SignalDirection::Buy => "buy",
         SignalDirection::Sell => "sell",
+        SignalDirection::Hold => "hold",
     }
 }
 
 /// The actual signals, one compact JSON object per line, so a mismatch is pasteable.
-fn dump(signals: &[honba_entities::Signal]) -> String {
+fn dump(signals: &[Signal]) -> String {
     signals
         .iter()
         .map(|s| {
@@ -137,9 +140,9 @@ fn dump(signals: &[honba_entities::Signal]) -> String {
         .join("\n")
 }
 
-fn run_file(text: &str, horizon: honba_entities::SignalHorizon) {
+fn run_file(text: &str, horizon: catalog::SignalHorizon) {
     let document: Value = serde_json::from_str(text).expect("vector parses");
-    let instrument = InstrumentId::new("X", Exchange::new("NSE"));
+    let instrument = InstrumentId::new(Exchange::Nse, "X");
     let cases = document["cases"].as_array().expect("cases array");
     assert!(!cases.is_empty());
 
@@ -207,12 +210,12 @@ fn run_file(text: &str, horizon: honba_entities::SignalHorizon) {
 
 #[test]
 fn signals_day_matches_the_vector() {
-    run_file(DAY, honba_entities::SignalHorizon::Intraday);
+    run_file(DAY, catalog::SignalHorizon::Intraday);
 }
 
 #[test]
 fn signals_swing_matches_the_vector() {
-    run_file(SWING, honba_entities::SignalHorizon::Swing);
+    run_file(SWING, catalog::SignalHorizon::Swing);
 }
 
 /// Regenerates the committed vectors from the engine (run explicitly):
@@ -225,10 +228,10 @@ fn signals_swing_matches_the_vector() {
 #[ignore = "regenerates schema/conformance/signals_*.json"]
 fn regenerate_vectors() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schema/conformance");
-    let instrument = InstrumentId::new("X", Exchange::new("NSE"));
+    let instrument = InstrumentId::new(Exchange::Nse, "X");
     for (file, horizon) in [
-        ("signals_day.json", honba_entities::SignalHorizon::Intraday),
-        ("signals_swing.json", honba_entities::SignalHorizon::Swing),
+        ("signals_day.json", catalog::SignalHorizon::Intraday),
+        ("signals_swing.json", catalog::SignalHorizon::Swing),
     ] {
         let path = root.join(file);
         let text = std::fs::read_to_string(&path).expect("read vector");

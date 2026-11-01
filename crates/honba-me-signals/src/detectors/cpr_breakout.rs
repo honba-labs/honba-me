@@ -33,9 +33,7 @@ impl Detector for CprBreakout {
                 out.push(Firing {
                     code: "cpr_breakout_up",
                     bar: i,
-                    detail: format!(
-                        "Price {close:.2} broke above CPR Top Central Pivot {tc:.2}"
-                    ),
+                    detail: format!("Price {close:.2} broke above CPR Top Central Pivot {tc:.2}"),
                     evidence: vec![("cpr_tc", tc), ("close", close)],
                 });
             }

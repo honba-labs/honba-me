@@ -139,7 +139,11 @@ impl TickRequest {
                 ));
             }
         }
-        Ok(Self { instrument, from, to })
+        Ok(Self {
+            instrument,
+            from,
+            to,
+        })
     }
 
     /// The requested instrument.

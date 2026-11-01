@@ -1,9 +1,9 @@
 //! Tests for the individual detectors. Each asserts the semantics on a hand-built series.
 
-use honba_entities::SignalHorizon;
 use honba_indicators::Indicator;
+use rust_decimal::prelude::ToPrimitive;
 
-use crate::catalog::Params;
+use crate::catalog::{Params, SignalHorizon};
 use crate::detector::Detector;
 use crate::detectors::{momentum, trend, volume};
 use crate::series::Series;
@@ -144,7 +144,7 @@ fn the_series_matches_the_underlying_indicator() {
     let mut ema = honba_indicators::Ema::new(params.ema_fast);
     let mut last = None;
     for bar in &bars {
-        last = ema.update(bar.close());
+        last = ema.update(bar.close.0.to_f64().unwrap_or(0.0));
     }
     assert_eq!(series.ema_fast[series.len() - 1], last);
 }

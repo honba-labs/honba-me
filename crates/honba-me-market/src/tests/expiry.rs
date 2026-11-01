@@ -1,6 +1,6 @@
 //! Unit tests for `crate::expiry`.
 
-use honba_entities::InstrumentKind;
+use honba_core::InstrumentKind;
 
 use super::{Holidays, date};
 use crate::{ExpiryRules, LastThursdayExpiry};

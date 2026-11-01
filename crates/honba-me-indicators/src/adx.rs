@@ -15,8 +15,8 @@
 //! ADX = Smoothed(DX)
 //! ```
 
-use honba_core::Bar;
 use crate::indicator::Indicator;
+use honba_core::Bar;
 use rust_decimal::prelude::ToPrimitive;
 
 /// ADX (Average Directional Index) with +DI and -DI.
@@ -165,12 +165,14 @@ impl Indicator for Adx {
         self.atr_sum = atr;
 
         let plus_di_val = if atr > 0.0 {
-            100.0 * (self.plus_dm_sum * (self.period as f64 - 1.0) + plus_dm) / (atr * self.period as f64)
+            100.0 * (self.plus_dm_sum * (self.period as f64 - 1.0) + plus_dm)
+                / (atr * self.period as f64)
         } else {
             0.0
         };
         let minus_di_val = if atr > 0.0 {
-            100.0 * (self.minus_dm_sum * (self.period as f64 - 1.0) + minus_dm) / (atr * self.period as f64)
+            100.0 * (self.minus_dm_sum * (self.period as f64 - 1.0) + minus_dm)
+                / (atr * self.period as f64)
         } else {
             0.0
         };

@@ -1,8 +1,6 @@
 //! Tests for the level detectors: prior-day and 52-week breaks.
 
-use honba_entities::SignalHorizon;
-
-use crate::catalog::Params;
+use crate::catalog::{Params, SignalHorizon};
 use crate::detector::Detector;
 use crate::detectors::levels::Levels;
 use crate::series::Series;

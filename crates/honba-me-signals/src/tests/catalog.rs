@@ -1,8 +1,6 @@
 //! Tests for the frozen ontology, the detector specs and the rulesets.
 
-use honba_entities::SignalHorizon;
-
-use crate::catalog::{self, DETECTORS, Params, REASON_CODES, RULESETS};
+use crate::catalog::{self, DETECTORS, Params, REASON_CODES, RULESETS, SignalHorizon};
 
 #[test]
 fn reason_codes_are_unique_and_looked_up() {
@@ -57,7 +55,7 @@ fn rulesets_cover_every_horizon_and_are_named_after_it() {
     for horizon in [SignalHorizon::Intraday, SignalHorizon::Swing] {
         let ruleset = catalog::ruleset_for(horizon);
         assert_eq!(ruleset.horizon, horizon);
-        assert_eq!(ruleset.id, horizon.ruleset());
+        assert_eq!(ruleset.id, horizon.ruleset().id);
         assert!(
             (0.0..=1.0).contains(&ruleset.min_strength),
             "{} min_strength {}",

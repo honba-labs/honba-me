@@ -109,10 +109,7 @@ impl MarketDataFeed for FyersFeed {
         Ok(())
     }
 
-    async fn fetch_snapshot(
-        &self,
-        _instruments: &[InstrumentId],
-    ) -> Result<Vec<Tick>, MdError> {
+    async fn fetch_snapshot(&self, _instruments: &[InstrumentId]) -> Result<Vec<Tick>, MdError> {
         Ok(Vec::new())
     }
 

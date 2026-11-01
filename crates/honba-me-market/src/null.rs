@@ -56,7 +56,14 @@ impl CostSchedule for NullCostSchedule {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NullInstrumentRulesProvider;
 
-impl InstrumentRulesProvider for NullInstrumentRulesProvider {}
+impl InstrumentRulesProvider for NullInstrumentRulesProvider {
+    fn rules_for(&self, _instrument: &honba_core::InstrumentId) -> crate::rules::InstrumentRules {
+        crate::rules::InstrumentRules::new(
+            honba_core::Quantity::from_u64(1),
+            honba_core::Price::from_rupees("0.05").unwrap(),
+        )
+    }
+}
 
 /// Pass-through symbol grammar for the null market.
 #[derive(Debug, Default, Clone, Copy)]

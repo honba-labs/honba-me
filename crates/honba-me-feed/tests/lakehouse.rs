@@ -350,7 +350,10 @@ async fn recorder_flushes_on_the_interval() {
             break;
         }
     }
-    assert_eq!(seen, 1, "timer flushed without hitting max_ticks or shutdown");
+    assert_eq!(
+        seen, 1,
+        "timer flushed without hitting max_ticks or shutdown"
+    );
     let stats = rec.shutdown().await.unwrap();
     assert_eq!(stats.written, 1);
 }
@@ -394,7 +397,11 @@ fn legacy_tick_store_migrates_into_the_lakehouse_as_exact_decimals() {
     };
     use honba_feed::write_tick_file;
 
-    assert_eq!(decimal_from_f64(1500.1), Some(d("1500.1")), "no binary-float noise");
+    assert_eq!(
+        decimal_from_f64(1500.1),
+        Some(d("1500.1")),
+        "no binary-float noise"
+    );
     assert_eq!(decimal_from_f64(f64::NAN), None);
 
     let tmp = TempDir::new("migrate");
@@ -402,7 +409,13 @@ fn legacy_tick_store_migrates_into_the_lakehouse_as_exact_decimals() {
     let ns = |s: i64| UnixNanos::from_datetime(at(s));
     let quote = QuoteTick::new(infy(), 1499.95, 1500.05, 10.0, 20.0, ns(0), ns(0));
     let trade = TradeTick::new(
-        infy(), 1500.0, 5.0, AggressorSide::Buyer, TradeId::new("t1"), ns(1), ns(1),
+        infy(),
+        1500.0,
+        5.0,
+        AggressorSide::Buyer,
+        TradeId::new("t1"),
+        ns(1),
+        ns(1),
     );
     write_tick_file(&legacy.join("ticks").join("a.parquet"), &[quote], &[trade]).unwrap();
 
@@ -416,7 +429,14 @@ fn legacy_tick_store_migrates_into_the_lakehouse_as_exact_decimals() {
 
     let spec = BarSpecification::new(1, BarAggregation::Day, PriceType::Last);
     let wire_bar = WireBar::new(
-        BarType::new(infy(), spec), 100.5, 101.0, 99.5, 100.75, 1000.0, ns(0), ns(0),
+        BarType::new(infy(), spec),
+        100.5,
+        101.0,
+        99.5,
+        100.75,
+        1000.0,
+        ns(0),
+        ns(0),
     );
     let bars = bars_to_canonical(&[wire_bar]);
     assert_eq!(bars[0].close.0, d("100.75"));

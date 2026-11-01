@@ -1,7 +1,4 @@
 //! Donchian Channel.
-//!
-//! The channel over `period` bars is the highest high and lowest low in the
-//! window; the middle is their midpoint.
 
 use std::collections::VecDeque;
 
@@ -9,7 +6,7 @@ use honba_core::Bar;
 
 use crate::indicator::Indicator;
 
-/// The value produced by [`Donchian`].
+/// Output of the Donchian Channel indicator.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DonchianValue {
     /// Highest high over the window.
@@ -26,11 +23,20 @@ pub struct DonchianValue {
 /// maximum of highs and minimum of lows.
 ///
 /// ```
-/// use honba_indicators::{Indicator, Donchian};
-/// use honba_messages::{Bar, BarAggregation, BarSpecification, BarType, Exchange, InstrumentId, PriceType, UnixNanos};
+/// use honba_core::{Bar, Exchange, InstrumentId, Price, Quantity};
+/// use honba_indicators::{Donchian, Indicator};
+/// use rust_decimal::Decimal;
+///
 /// fn bar(h: f64, l: f64) -> Bar {
-///     let bt = BarType::new(InstrumentId::new("X", Exchange::new("NSE")), BarSpecification::new(1, BarAggregation::Minute, PriceType::Last));
-///     Bar::new(bt, l, h, l, l, 1.0, UnixNanos::from_u64(1), UnixNanos::from_u64(1))
+///     Bar {
+///         instrument: InstrumentId::new(Exchange::Nse, "X"),
+///         open: Price::new(Decimal::from_f64_retain(l).unwrap()),
+///         high: Price::new(Decimal::from_f64_retain(h).unwrap()),
+///         low: Price::new(Decimal::from_f64_retain(l).unwrap()),
+///         close: Price::new(Decimal::from_f64_retain(l).unwrap()),
+///         volume: Quantity::from_u64(1),
+///         timestamp: chrono::Utc::now(),
+///     }
 /// }
 /// let mut d = Donchian::new(3);
 /// assert_eq!(d.update(&bar(10.0, 8.0)), None);

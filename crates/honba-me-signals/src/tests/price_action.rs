@@ -1,8 +1,6 @@
 //! Tests for the price-action detectors: candlesticks, break of structure and pivots.
 
-use honba_entities::SignalHorizon;
-
-use crate::catalog::Params;
+use crate::catalog::{Params, SignalHorizon};
 use crate::detector::Detector;
 use crate::detectors::price_action::{BreakOfStructure, Candlestick, FractalPivot};
 use crate::series::Series;

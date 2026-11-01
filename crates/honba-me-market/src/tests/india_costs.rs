@@ -1,6 +1,6 @@
 //! Unit tests for `crate::india::costs::cash_equity` (the NSE cash-equity schedules).
 
-use honba_messages::OrderSide;
+use honba_core::OrderSide;
 
 use crate::india::costs::{CHARGE_IPFT, NseCashEquitySchedule};
 use crate::{CostModelSource, CostSchedule, MarketSegment};

@@ -1,13 +1,13 @@
 //! The detector families (ADR 0031 §4). Each is a small, stateless scan over [`Series`].
 
+pub(crate) mod cpr_breakout;
 pub(crate) mod levels;
 pub(crate) mod momentum;
+pub(crate) mod orb;
 pub(crate) mod price_action;
 pub(crate) mod trend;
 pub(crate) mod volume;
 pub(crate) mod vwap_cross;
-pub(crate) mod cpr_breakout;
-pub(crate) mod orb;
 
 use crate::catalog::Params;
 use crate::detector::Detector;

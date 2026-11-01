@@ -99,6 +99,9 @@ impl MarginModel for IndiaMarginModel {
                 // Option buying 100% premium; Option selling SPAN+Exposure
                 MarginRequirement::new(notional * 0.30, notional * 0.25)
             }
+            InstrumentKind::Index => {
+                MarginRequirement::zero()
+            }
         }
     }
 }

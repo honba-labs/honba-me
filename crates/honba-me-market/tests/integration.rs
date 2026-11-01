@@ -3,7 +3,7 @@
 
 use chrono::{NaiveDate, NaiveTime};
 
-use honba_entities::InstrumentKind;
+use honba_core::InstrumentKind;
 use honba_market::Result;
 use honba_market::calendar::{HolidaySource, Session, TradingCalendar};
 use honba_market::india::calendar::NseCalendar;
@@ -12,7 +12,7 @@ use honba_market::india::profile::IndiaMarketProfile;
 use honba_market::india::universes::{NIFTY50_SIZE, Nifty50};
 use honba_market::profile::MarketProfile;
 use honba_market::universes::{Universe, UniverseSource};
-use honba_messages::OrderSide;
+use honba_core::OrderSide;
 
 fn date(y: i32, m: u32, d: u32) -> NaiveDate {
     NaiveDate::from_ymd_opt(y, m, d).unwrap()

@@ -15,11 +15,20 @@ use crate::indicator::Indicator;
 /// Monotonic deques give O(1) amortised updates.
 ///
 /// ```
+/// use honba_core::{Bar, Exchange, InstrumentId, Price, Quantity};
 /// use honba_indicators::{Indicator, WilliamsR};
-/// use honba_messages::{Bar, BarAggregation, BarSpecification, BarType, Exchange, InstrumentId, PriceType, UnixNanos};
+/// use rust_decimal::Decimal;
+///
 /// fn bar(h: f64, l: f64, c: f64) -> Bar {
-///     let bt = BarType::new(InstrumentId::new("X", Exchange::new("NSE")), BarSpecification::new(1, BarAggregation::Minute, PriceType::Last));
-///     Bar::new(bt, c, h, l, c, 1.0, UnixNanos::from_u64(1), UnixNanos::from_u64(1))
+///     Bar {
+///         instrument: InstrumentId::new(Exchange::Nse, "X"),
+///         open: Price::new(Decimal::from_f64_retain(c).unwrap()),
+///         high: Price::new(Decimal::from_f64_retain(h).unwrap()),
+///         low: Price::new(Decimal::from_f64_retain(l).unwrap()),
+///         close: Price::new(Decimal::from_f64_retain(c).unwrap()),
+///         volume: Quantity::from_u64(1),
+///         timestamp: chrono::Utc::now(),
+///     }
 /// }
 /// let mut w = WilliamsR::new(3);
 /// w.update(&bar(10.0, 5.0, 9.0));

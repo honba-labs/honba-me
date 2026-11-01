@@ -1,8 +1,8 @@
 //! Automated instrument master data downloaders.
 
 use reqwest;
-use thiserror::Error;
 use std::path::Path;
+use thiserror::Error;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 

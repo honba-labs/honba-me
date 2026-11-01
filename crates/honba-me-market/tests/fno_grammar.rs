@@ -1,9 +1,11 @@
 //! Acceptance test suite for Indian F&O instrument grammar and market registry resolution (E1-S2).
 
 use chrono::NaiveDate;
-use honba_entities::{Currency, InstrumentKind, OptionType};
+use honba_core::Price;
+use honba_market::india::fno::OptionType;
+use rust_decimal_macros::dec;
 use honba_market::india::fno::{
-    FnoContract, FnoExpiry, default_fno_lot_size, format_fno_symbol, parse_fno_symbol,
+    FnoContract, FnoExpiry, format_fno_symbol, parse_fno_symbol,
 };
 use honba_market::profile::MarketRegistry;
 
@@ -118,7 +120,7 @@ fn ce_suffix_ambiguity() {
                     month: 10
                 }
             );
-            assert_eq!(strike, 180.0);
+            assert_eq!(strike, Price::new(dec!(180.0)));
             assert_eq!(option_type, OptionType::Call);
         }
         _ => panic!("expected Option contract"),
@@ -140,7 +142,7 @@ fn ce_suffix_ambiguity() {
                     month: 10
                 }
             );
-            assert_eq!(strike, 750.0);
+            assert_eq!(strike, Price::new(dec!(750.0)));
             assert_eq!(option_type, OptionType::Put);
         }
         _ => panic!("expected Option contract"),
@@ -148,7 +150,7 @@ fn ce_suffix_ambiguity() {
 
     let lice_pe = parse_fno_symbol("LICEHSGFIN24OCT700PE").expect("valid LICEHSGFIN option");
     assert_eq!(lice_pe.underlying(), "LICEHSGFIN");
-    assert_eq!(lice_pe.strike(), Some(700.0));
+    assert_eq!(lice_pe.strike(), Some(Price::new(dec!(700.0))));
     assert_eq!(lice_pe.option_type(), Some(OptionType::Put));
 }
 
@@ -218,56 +220,45 @@ fn catalog_resolves_fno_symbol() {
     let inst_opt = profile
         .resolve_instrument("NIFTY24OCT24000CE")
         .expect("resolves monthly option");
-    assert_eq!(inst_opt.id().symbol(), "NIFTY24OCT24000CE");
-    assert_eq!(inst_opt.id().exchange().as_str(), "NSE");
-    assert_eq!(inst_opt.kind(), InstrumentKind::Option);
-    assert_eq!(inst_opt.currency(), Currency::Inr);
-    assert_eq!(inst_opt.lot_size(), default_fno_lot_size("NIFTY"));
-    assert_eq!(inst_opt.tick_size(), 0.05);
-    assert_eq!(inst_opt.underlying(), Some("NIFTY"));
-    assert_eq!(inst_opt.strike(), Some(24000.0));
-    assert_eq!(inst_opt.option_type(), Some(OptionType::Call));
-    assert_eq!(inst_opt.expiry(), Some(date(2024, 10, 31)));
-    assert!(inst_opt.is_derivative());
+    assert_eq!(inst_opt.symbol.as_str(), "NIFTY24OCT24000CE");
+    assert_eq!(inst_opt.exchange.as_str(), "NSE");
+    let contract_opt = parse_fno_symbol(&inst_opt.symbol).expect("parses contract");
+    assert_eq!(contract_opt.underlying(), "NIFTY");
+    assert_eq!(contract_opt.strike(), Some(Price::new(dec!(24000))));
+    assert_eq!(contract_opt.option_type(), Some(OptionType::Call));
+    assert_eq!(contract_opt.expiry().expiry_date(), Some(date(2024, 10, 31)));
 
     // 2. Resolve Weekly Option
     let inst_w = profile
         .resolve_instrument("NIFTY24O1724000CE")
         .expect("resolves weekly option");
-    assert_eq!(inst_w.kind(), InstrumentKind::Option);
-    assert_eq!(inst_w.expiry(), Some(date(2024, 10, 17)));
-    assert_eq!(inst_w.strike(), Some(24000.0));
-    assert_eq!(inst_w.option_type(), Some(OptionType::Call));
-    assert!(inst_w.is_derivative());
+    let contract_w = parse_fno_symbol(&inst_w.symbol).expect("parses weekly option");
+    assert_eq!(contract_w.expiry().expiry_date(), Some(date(2024, 10, 17)));
+    assert_eq!(contract_w.strike(), Some(Price::new(dec!(24000))));
+    assert_eq!(contract_w.option_type(), Some(OptionType::Call));
 
     // 3. Resolve Monthly Future
     let inst_fut = profile
         .resolve_instrument("RELIANCE24OCTFUT")
         .expect("resolves future");
-    assert_eq!(inst_fut.kind(), InstrumentKind::Future);
-    assert_eq!(inst_fut.underlying(), Some("RELIANCE"));
-    assert_eq!(inst_fut.strike(), None);
-    assert_eq!(inst_fut.option_type(), None);
-    assert_eq!(inst_fut.expiry(), Some(date(2024, 10, 31)));
-    assert!(inst_fut.is_derivative());
+    let contract_fut = parse_fno_symbol(&inst_fut.symbol).expect("parses future");
+    assert_eq!(contract_fut.underlying(), "RELIANCE");
+    assert_eq!(contract_fut.strike(), None);
+    assert_eq!(contract_fut.option_type(), None);
+    assert_eq!(contract_fut.expiry().expiry_date(), Some(date(2024, 10, 31)));
 
     // 4. Resolve Cash Equity
     let inst_eq = profile
         .resolve_instrument("RELIANCE")
         .expect("resolves cash equity");
-    assert_eq!(inst_eq.kind(), InstrumentKind::Equity);
-    assert_eq!(inst_eq.underlying(), None);
-    assert_eq!(inst_eq.strike(), None);
-    assert_eq!(inst_eq.option_type(), None);
-    assert_eq!(inst_eq.expiry(), None);
-    assert_eq!(inst_eq.lot_size(), 1.0);
-    assert_eq!(inst_eq.tick_size(), 0.05);
-    assert!(!inst_eq.is_derivative());
+    assert_eq!(inst_eq.symbol.as_str(), "RELIANCE");
+    assert_eq!(inst_eq.exchange.as_str(), "NSE");
+    assert!(parse_fno_symbol(&inst_eq.symbol).is_err());
 
     // 5. Explicit exchange qualifier
     let inst_bse = profile
         .resolve_instrument("BSE:TCS")
         .expect("resolves BSE qualified symbol");
-    assert_eq!(inst_bse.id().exchange().as_str(), "BSE");
-    assert_eq!(inst_bse.id().symbol(), "TCS");
+    assert_eq!(inst_bse.exchange.as_str(), "BSE");
+    assert_eq!(inst_bse.symbol.as_str(), "TCS");
 }

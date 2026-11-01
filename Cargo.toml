@@ -35,6 +35,7 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 rust_decimal = "1"
+rust_decimal_macros = "1"
 async-trait = "0.1"
 futures = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
@@ -72,6 +73,19 @@ honba-analytics  = { package = "honba-nou-analytics", path = "../honba-nou/crate
 
 [profile.dev]
 opt-level = 1
+debug = false
+strip = "debuginfo"
+
+
+[profile.test]
+opt-level = 1
+debug = false
+strip = "debuginfo"
+
+[profile.dbg]
+inherits = "dev"
+debug = 2
+strip = "none"
 
 [profile.release]
 opt-level = 3

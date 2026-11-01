@@ -27,9 +27,7 @@ use thiserror::Error;
 
 use honba_core::InstrumentId;
 
-use crate::wire::{
-    Bar, BarAggregation, BarSpecification, BarType, PriceType, UnixNanos,
-};
+use crate::wire::{Bar, BarAggregation, BarSpecification, BarType, PriceType, UnixNanos};
 
 use crate::dataset::{ColumnarSlice, ColumnarSliceBuilder, DatasetBuildError};
 

@@ -561,7 +561,9 @@ impl Dataset {
         id: Option<DatasetId>,
     ) -> Result<Dataset, DatasetBuildError> {
         let mut slices = slices;
-        slices.sort_by(|left, right| crate::wire::instrument_cmp(left.instrument(), right.instrument()));
+        slices.sort_by(|left, right| {
+            crate::wire::instrument_cmp(left.instrument(), right.instrument())
+        });
         for pair in slices.windows(2) {
             if pair[0].instrument() == pair[1].instrument() {
                 return Err(DatasetBuildError::DuplicateInstrument(

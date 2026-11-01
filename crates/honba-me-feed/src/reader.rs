@@ -113,9 +113,9 @@ impl DatasetReader {
                 .to_owned();
             match stem.rsplit_once('.') {
                 Some((symbol, exchange)) if !symbol.is_empty() && !exchange.is_empty() => {
-                    let exchange: Exchange = exchange.parse().map_err(|_| {
-                        ReaderError::FileName(file_name(&path))
-                    })?;
+                    let exchange: Exchange = exchange
+                        .parse()
+                        .map_err(|_| ReaderError::FileName(file_name(&path)))?;
                     files.push((InstrumentId::new(exchange, symbol), path));
                 }
                 _ => return Err(ReaderError::FileName(file_name(&path))),
